@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": false,
+  "singleQuote": true,
+  "jsxSingleQuote": true,
+  "sortPackageJson": {
+    "sortScripts": true
+  },
+  "sortImports": true,
+  "sortTailwindcss": true,
+  "ignorePatterns": [
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    ".agents/**",
+    "dist/**",
+    ".wrangler/**",
+    "drizzle/meta/**",
+    "routeTree.gen.ts",
+    "worker-configuration.d.ts"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "browser-pulse",
+  "compatibility_date": "2026-08-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/server.ts",
+  "observability": {
+    "enabled": false,
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "browser-pulse",
+      "database_id": "45086d84-d3b0-4dac-80b9-5557ecda8350",
+      "migrations_dir": "drizzle",
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "INGEST_QUEUE",
+        "queue": "browser-pulse-ingest",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "browser-pulse-ingest",
+        "max_batch_size": 20,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "browser-pulse-ingest-dlq",
+      },
+    ],
+  },
+  "ratelimits": [
+    {
+      "name": "INGEST_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 120,
+        "period": 60,
+      },
+    },
+  ],
+  "triggers": {
+    "crons": ["17 3 * * *"],
+  },
+}

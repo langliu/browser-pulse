@@ -1,0 +1,37 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["import", "typescript", "react", "jsx_a11y"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "off",
+    "style": "off"
+  },
+  "rules": {
+    "import/no-cycle": "off",
+    "import/exports-last": "off",
+    "import/prefer-default-export": "off",
+    "import/no-named-export": "off",
+    "typescript/array-type": "off",
+    "typescript/require-await": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-max-depth": "off",
+    "react/no-array-index-key": "off",
+    "eslint/no-magic-numbers": "off",
+    "eslint/no-ternary": "off",
+    "eslint/no-await-in-loop": "off",
+    "eslint/sort-keys": "off",
+    "eslint/sort-imports": "off",
+    "eslint/func-style": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "jsx-a11y/no-autofocus": "off"
+  },
+  "ignorePatterns": [
+    "dist",
+    ".wrangler",
+    "node_modules",
+    "drizzle/meta",
+    "routeTree.gen.ts",
+    "worker-configuration.d.ts"
+  ]
+}
