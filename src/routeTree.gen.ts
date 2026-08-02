@@ -15,6 +15,8 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/app/projects/$projectId'
 import { Route as V1BrowserEventsCollectorKeyRouteImport } from './routes/v1/browser-events/$collectorKey'
+import { Route as AppProjectsProjectIdIndexRouteImport } from './routes/app/projects/$projectId/index'
+import { Route as AppProjectsProjectIdDataRouteImport } from './routes/app/projects/$projectId/data'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -47,21 +49,36 @@ const V1BrowserEventsCollectorKeyRoute =
     path: '/v1/browser-events/$collectorKey',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppProjectsProjectIdIndexRoute =
+  AppProjectsProjectIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppProjectsProjectIdRoute,
+  } as any)
+const AppProjectsProjectIdDataRoute =
+  AppProjectsProjectIdDataRouteImport.update({
+    id: '/data',
+    path: '/data',
+    getParentRoute: () => AppProjectsProjectIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/app/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/app/projects/$projectId': typeof AppProjectsProjectIdRouteWithChildren
   '/v1/browser-events/$collectorKey': typeof V1BrowserEventsCollectorKeyRoute
+  '/app/projects/$projectId/data': typeof AppProjectsProjectIdDataRoute
+  '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/app/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/v1/browser-events/$collectorKey': typeof V1BrowserEventsCollectorKeyRoute
+  '/app/projects/$projectId/data': typeof AppProjectsProjectIdDataRoute
+  '/app/projects/$projectId': typeof AppProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,8 +86,10 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/app/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/app/projects/$projectId': typeof AppProjectsProjectIdRouteWithChildren
   '/v1/browser-events/$collectorKey': typeof V1BrowserEventsCollectorKeyRoute
+  '/app/projects/$projectId/data': typeof AppProjectsProjectIdDataRoute
+  '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,13 +100,16 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/app/projects/$projectId'
     | '/v1/browser-events/$collectorKey'
+    | '/app/projects/$projectId/data'
+    | '/app/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/app'
     | '/api/auth/$'
-    | '/app/projects/$projectId'
     | '/v1/browser-events/$collectorKey'
+    | '/app/projects/$projectId/data'
+    | '/app/projects/$projectId'
   id:
     | '__root__'
     | '/'
@@ -96,6 +118,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/app/projects/$projectId'
     | '/v1/browser-events/$collectorKey'
+    | '/app/projects/$projectId/data'
+    | '/app/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -149,17 +173,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof V1BrowserEventsCollectorKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/projects/$projectId/': {
+      id: '/app/projects/$projectId/'
+      path: '/'
+      fullPath: '/app/projects/$projectId/'
+      preLoaderRoute: typeof AppProjectsProjectIdIndexRouteImport
+      parentRoute: typeof AppProjectsProjectIdRoute
+    }
+    '/app/projects/$projectId/data': {
+      id: '/app/projects/$projectId/data'
+      path: '/data'
+      fullPath: '/app/projects/$projectId/data'
+      preLoaderRoute: typeof AppProjectsProjectIdDataRouteImport
+      parentRoute: typeof AppProjectsProjectIdRoute
+    }
   }
 }
 
+interface AppProjectsProjectIdRouteChildren {
+  AppProjectsProjectIdDataRoute: typeof AppProjectsProjectIdDataRoute
+  AppProjectsProjectIdIndexRoute: typeof AppProjectsProjectIdIndexRoute
+}
+
+const AppProjectsProjectIdRouteChildren: AppProjectsProjectIdRouteChildren = {
+  AppProjectsProjectIdDataRoute: AppProjectsProjectIdDataRoute,
+  AppProjectsProjectIdIndexRoute: AppProjectsProjectIdIndexRoute,
+}
+
+const AppProjectsProjectIdRouteWithChildren =
+  AppProjectsProjectIdRoute._addFileChildren(AppProjectsProjectIdRouteChildren)
+
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
-  AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
+  AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
-  AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
+  AppProjectsProjectIdRoute: AppProjectsProjectIdRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

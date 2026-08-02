@@ -346,6 +346,21 @@ const dashboardInput = z.object({
   osFamilies: z.array(z.enum(osFamilyEnum)).max(7).default([]),
   deviceClasses: z.array(z.enum(deviceClassEnum)).max(4).default([]),
 })
+const detailBrowserFamilyEnum = [...browserFamilyEnum, 'Unknown'] as const
+
+const detailOsFamilyEnum = [...osFamilyEnum, 'Unknown'] as const
+
+const detailDeviceClassEnum = [...deviceClassEnum, 'Unknown'] as const
+
+const dataDetailsInput = z.object({
+  projectId: z.string().uuid(),
+  days: z.number().int().min(1).max(90).default(30),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(10).max(100).default(50),
+  browserFamily: z.enum(detailBrowserFamilyEnum).optional(),
+  osFamily: z.enum(detailOsFamilyEnum).optional(),
+  deviceClass: z.enum(detailDeviceClassEnum).optional(),
+})
 
 export interface DashboardDistributionItem {
   browserFamily: string
@@ -388,6 +403,28 @@ export interface ProjectDashboard {
   unknownDetectionEvents: number
   availableOsFamilies: string[]
   availableDeviceClasses: string[]
+}
+
+export interface ProjectDataDetailRow {
+  localDate: string
+  browserFamily: string
+  browserMajor: string
+  osFamily: string
+  deviceClass: string
+  detectionSource: string
+  eventCount: number
+}
+
+export interface ProjectDataDetails {
+  projectId: string
+  timezone: 'Asia/Shanghai'
+  from: string
+  to: string
+  rows: ProjectDataDetailRow[]
+  totalRows: number
+  page: number
+  pageSize: number
+  totalPages: number
 }
 
 async function requireProjectForUser(projectId: string) {
@@ -601,6 +638,79 @@ export const getProjectDashboard = createServerFn({ method: 'GET' })
       availableDeviceClasses: [...deviceClassCounts.entries()]
         .sort((a, b) => b[1] - a[1])
         .map(([deviceClass]) => deviceClass),
+    }
+  })
+export const getProjectDataDetails = createServerFn({ method: 'GET' })
+  .validator(dataDetailsInput)
+  .handler(async ({ data }): Promise<ProjectDataDetails> => {
+    const { project } = await requireProjectForUser(data.projectId)
+    const db = getDb()
+
+    const today = shanghaiDateString(new Date())
+    const fromDate = addDays(new Date(today + 'T00:00:00Z'), -(data.days - 1))
+    const from = shanghaiDateString(fromDate)
+    const toDate = addDays(new Date(today + 'T00:00:00Z'), 1)
+    const to = shanghaiDateString(toDate)
+
+    const filters = [
+      eq(dailyAggregates.projectId, project.id),
+      gte(dailyAggregates.localDate, from),
+      lt(dailyAggregates.localDate, to),
+    ]
+    if (data.browserFamily) {
+      filters.push(eq(dailyAggregates.browserFamily, data.browserFamily))
+    }
+    if (data.osFamily) {
+      filters.push(eq(dailyAggregates.osFamily, data.osFamily))
+    }
+    if (data.deviceClass) {
+      filters.push(eq(dailyAggregates.deviceClass, data.deviceClass))
+    }
+
+    const where = and(...filters)
+    const [countResult, rows] = await Promise.all([
+      db
+        .select({ total: sql<number>`count(*)` })
+        .from(dailyAggregates)
+        .where(where)
+        .get(),
+      db
+        .select({
+          localDate: dailyAggregates.localDate,
+          browserFamily: dailyAggregates.browserFamily,
+          browserMajor: dailyAggregates.browserMajor,
+          osFamily: dailyAggregates.osFamily,
+          deviceClass: dailyAggregates.deviceClass,
+          detectionSource: dailyAggregates.detectionSource,
+          eventCount: dailyAggregates.eventCount,
+        })
+        .from(dailyAggregates)
+        .where(where)
+        .orderBy(
+          desc(dailyAggregates.localDate),
+          desc(dailyAggregates.eventCount),
+          dailyAggregates.browserFamily,
+        )
+        .limit(data.pageSize)
+        .offset((data.page - 1) * data.pageSize),
+    ])
+
+    const totalRows = Number(countResult?.total ?? 0)
+    const totalPages = Math.max(1, Math.ceil(totalRows / data.pageSize))
+
+    return {
+      projectId: project.id,
+      timezone: 'Asia/Shanghai',
+      from,
+      to,
+      rows: rows.map((row) => ({
+        ...row,
+        eventCount: Number(row.eventCount),
+      })),
+      totalRows,
+      page: data.page,
+      pageSize: data.pageSize,
+      totalPages,
     }
   })
 

@@ -106,6 +106,18 @@ src/
 
 每个事件仅保留：项目归属（服务端解析）、采集时间、浏览器家族与主版本、操作系统、设备类型、识别来源、片段版本。**禁止存储**：访客 ID、原始 User-Agent、IP、页面 URL、Cookie、跨站标识。事件无法关联到具体访客。
 
+## 数据采集与 User-Agent 识别
+
+Browser Pulse 会在客户网站浏览器内判断浏览器环境，但不会把完整 User-Agent 上传到分析存储：
+
+- 优先读取低熵 `navigator.userAgentData`（UA-CH）；
+- UA-CH 不可用时回退到 `navigator.userAgent` 正则匹配；
+- 在浏览器端归一化为浏览器家族、主版本、操作系统、设备类型和识别来源；
+- 请求正文只发送归一化字段，原始 User-Agent 只在页面内存中短暂读取；
+- 浏览器底层 HTTP 请求可能自动携带标准 User-Agent 请求头，边缘层可能短暂处理，但应用代码不读取或存储该请求头。
+
+采集只在接入方同意流程完成后显式调用 `collectBrowserPulse()`，每个页面最多发送一个事件。完整的识别规则、请求字段、服务端校验和隐私边界见[数据采集与 User-Agent 识别](docs/data-collection.md)。
+
 ## 部署
 
 1. 创建生产 D1 数据库与 Queues（`browser-pulse-ingest` + 死信队列），将 `database_id` 写入 `wrangler.jsonc`。

@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { Activity, ArrowRight, Chrome, ShieldCheck } from 'lucide-react'
+import { Activity, ArrowRight, Globe, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
@@ -84,7 +84,7 @@ function Home() {
         <Card className='border-[var(--line)] bg-[var(--surface-strong)] shadow-[0_24px_80px_rgba(23,58,64,0.12)] backdrop-blur-xl'>
           <CardHeader className='space-y-3'>
             <div className='flex size-11 items-center justify-center rounded-xl border border-[var(--line)] bg-white/70'>
-              <Chrome className='size-5 text-[var(--sea-ink)]' aria-hidden='true' />
+              <Globe className='size-5 text-[var(--sea-ink)]' aria-hidden='true' />
             </div>
             <CardTitle className='text-2xl text-[var(--sea-ink)]'>开始查看真实版本分布</CardTitle>
             <CardDescription className='leading-6'>
@@ -122,7 +122,7 @@ function Home() {
                 disabled={!viewer.authConfigured || signingIn}
                 onClick={signInWithGoogle}
               >
-                <Chrome className='size-4' aria-hidden='true' />
+                <Globe className='size-4' aria-hidden='true' />
                 {signingIn ? '正在前往 Google…' : '使用 Google 登录'}
               </Button>
             )}
