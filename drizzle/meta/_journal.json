@@ -8,6 +8,13 @@
       "when": 1785677676874,
       "tag": "0000_hard_vulcan",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785770605820,
+      "tag": "0001_tricky_sandman",
+      "breakpoints": true
     }
   ]
 }

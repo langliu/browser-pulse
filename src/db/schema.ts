@@ -86,7 +86,7 @@ export const workspaces = sqliteTable(
     name: text('name').notNull(),
     ...timestamps(),
   },
-  (table) => [uniqueIndex('workspaces_owner_user_id_unique').on(table.ownerUserId)],
+  (table) => [index('workspaces_owner_user_id_idx').on(table.ownerUserId)],
 )
 
 export const projects = sqliteTable(

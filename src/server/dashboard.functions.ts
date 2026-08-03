@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { env } from 'cloudflare:workers'
-import { and, desc, eq, gte, lt, sql } from 'drizzle-orm'
+import { asc, and, desc, eq, gte, lt, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { getDb } from '#/db'
@@ -19,6 +19,10 @@ import { getSessionUser, requireSessionUser } from '#/lib/session.server'
 
 const workspaceInput = z.object({
   name: z.string().trim().min(2, '工作区名称至少 2 个字').max(60),
+})
+
+const workspaceSelectionInput = z.object({
+  workspaceId: z.string().uuid().optional(),
 })
 
 const originSchema = z
@@ -46,6 +50,7 @@ const originSchema = z
   })
 
 const projectInput = z.object({
+  workspaceId: z.string().uuid(),
   name: z.string().trim().min(2, '项目名称至少 2 个字').max(80),
   origins: z
     .array(originSchema)
@@ -58,6 +63,10 @@ const projectIdInput = z.object({
   projectId: z.string().uuid(),
 })
 
+export interface WorkspaceSummary {
+  id: string
+  name: string
+}
 export interface ViewerState {
   authConfigured: boolean
   missingAuthConfiguration: string[]
@@ -67,7 +76,6 @@ export interface ViewerState {
     email: string
     image: string | null
   } | null
-  workspaceId: string | null
 }
 
 export interface DashboardProject {
@@ -79,10 +87,8 @@ export interface DashboardProject {
 }
 
 export interface DashboardState {
-  workspace: {
-    id: string
-    name: string
-  } | null
+  workspaces: WorkspaceSummary[]
+  workspace: WorkspaceSummary | null
   projects: DashboardProject[]
 }
 
@@ -94,6 +100,7 @@ export interface CreatedProjectCredentials {
 
 export interface ProjectDetail {
   id: string
+  workspaceId: string
   name: string
   status: 'active' | 'disabled'
   timezone: string
@@ -115,36 +122,33 @@ export const getViewer = createServerFn({ method: 'GET' }).handler(
         authConfigured: configuration.ready,
         missingAuthConfiguration: configuration.missing,
         user: null,
-        workspaceId: null,
       }
     }
-
-    const workspace = await getDb()
-      .select({ id: workspaces.id })
-      .from(workspaces)
-      .where(eq(workspaces.ownerUserId, user.id))
-      .get()
 
     return {
       authConfigured: configuration.ready,
       missingAuthConfiguration: configuration.missing,
       user,
-      workspaceId: workspace?.id ?? null,
     }
   },
 )
 
-export const getDashboardState = createServerFn({ method: 'GET' }).handler(
-  async (): Promise<DashboardState> => {
+export const getDashboardState = createServerFn({ method: 'GET' })
+  .validator(workspaceSelectionInput)
+  .handler(async ({ data }): Promise<DashboardState> => {
     const user = await requireSessionUser()
     const db = getDb()
-    const workspace = await db
+    const workspacesRows = await db
       .select({ id: workspaces.id, name: workspaces.name })
       .from(workspaces)
       .where(eq(workspaces.ownerUserId, user.id))
-      .get()
+      .orderBy(asc(workspaces.createdAt), asc(workspaces.id))
+    const workspace =
+      workspacesRows.find((candidate) => candidate.id === data.workspaceId) ??
+      workspacesRows[0] ??
+      null
 
-    if (!workspace) return { workspace: null, projects: [] }
+    if (!workspace) return { workspaces: workspacesRows, workspace: null, projects: [] }
 
     const rows = await db
       .select({
@@ -159,6 +163,7 @@ export const getDashboardState = createServerFn({ method: 'GET' }).handler(
       .orderBy(desc(projects.createdAt))
 
     return {
+      workspaces: workspacesRows,
       workspace,
       projects: rows.map((project) => ({
         ...project,
@@ -166,35 +171,20 @@ export const getDashboardState = createServerFn({ method: 'GET' }).handler(
         lastSuccessfulCollectionAt: project.lastSuccessfulCollectionAt?.toISOString() ?? null,
       })),
     }
-  },
-)
+  })
 
 export const createWorkspace = createServerFn({ method: 'POST' })
   .validator(workspaceInput)
   .handler(async ({ data }) => {
     const user = await requireSessionUser()
     const db = getDb()
-    const existing = await db
-      .select({ id: workspaces.id, name: workspaces.name })
-      .from(workspaces)
-      .where(eq(workspaces.ownerUserId, user.id))
-      .get()
-    if (existing) return existing
-
     const workspace = {
       id: crypto.randomUUID(),
       ownerUserId: user.id,
       name: data.name,
     }
-    await db.insert(workspaces).values(workspace).onConflictDoNothing()
-
-    const created = await db
-      .select({ id: workspaces.id, name: workspaces.name })
-      .from(workspaces)
-      .where(eq(workspaces.ownerUserId, user.id))
-      .get()
-    if (!created) throw new Error('工作区创建失败')
-    return created
+    await db.insert(workspaces).values(workspace)
+    return { id: workspace.id, name: workspace.name }
   })
 
 export const createProject = createServerFn({ method: 'POST' })
@@ -205,9 +195,9 @@ export const createProject = createServerFn({ method: 'POST' })
     const workspace = await db
       .select({ id: workspaces.id })
       .from(workspaces)
-      .where(eq(workspaces.ownerUserId, user.id))
+      .where(and(eq(workspaces.id, data.workspaceId), eq(workspaces.ownerUserId, user.id)))
       .get()
-    if (!workspace) throw new Error('请先创建工作区')
+    if (!workspace) throw new Error('工作区不存在或无权访问')
 
     const projectId = crypto.randomUUID()
     const collectorKey = await createCollectorKey()
@@ -255,6 +245,7 @@ export const getProjectDetail = createServerFn({ method: 'GET' })
     const project = await db
       .select({
         id: projects.id,
+        workspaceId: projects.workspaceId,
         name: projects.name,
         status: projects.status,
         timezone: projects.timezone,

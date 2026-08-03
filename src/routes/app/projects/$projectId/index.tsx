@@ -164,7 +164,7 @@ function ProjectPage() {
   return (
     <main className='mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10'>
       <Button asChild variant='ghost' size='sm' className='mb-5 -ml-3'>
-        <Link to='/app'>
+        <Link to='/app' search={{ workspaceId: project.workspaceId }}>
           <ArrowLeft className='size-4' aria-hidden='true' />
           返回工作区
         </Link>
