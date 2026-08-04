@@ -17,6 +17,7 @@ import { Route as AppProjectsProjectIdRouteImport } from './routes/app/projects/
 import { Route as V1BrowserEventsCollectorKeyRouteImport } from './routes/v1/browser-events/$collectorKey'
 import { Route as AppProjectsProjectIdIndexRouteImport } from './routes/app/projects/$projectId/index'
 import { Route as AppProjectsProjectIdDataRouteImport } from './routes/app/projects/$projectId/data'
+import { Route as AppProjectsProjectIdEventsRouteImport } from './routes/app/projects/$projectId/events'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -61,6 +62,12 @@ const AppProjectsProjectIdDataRoute =
     path: '/data',
     getParentRoute: () => AppProjectsProjectIdRoute,
   } as any)
+const AppProjectsProjectIdEventsRoute =
+  AppProjectsProjectIdEventsRouteImport.update({
+    id: '/events',
+    path: '/events',
+    getParentRoute: () => AppProjectsProjectIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteWithChildren
   '/v1/browser-events/$collectorKey': typeof V1BrowserEventsCollectorKeyRoute
   '/app/projects/$projectId/data': typeof AppProjectsProjectIdDataRoute
+  '/app/projects/$projectId/events': typeof AppProjectsProjectIdEventsRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -78,6 +86,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/v1/browser-events/$collectorKey': typeof V1BrowserEventsCollectorKeyRoute
   '/app/projects/$projectId/data': typeof AppProjectsProjectIdDataRoute
+  '/app/projects/$projectId/events': typeof AppProjectsProjectIdEventsRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
@@ -89,6 +98,7 @@ export interface FileRoutesById {
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteWithChildren
   '/v1/browser-events/$collectorKey': typeof V1BrowserEventsCollectorKeyRoute
   '/app/projects/$projectId/data': typeof AppProjectsProjectIdDataRoute
+  '/app/projects/$projectId/events': typeof AppProjectsProjectIdEventsRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId'
     | '/v1/browser-events/$collectorKey'
     | '/app/projects/$projectId/data'
+    | '/app/projects/$projectId/events'
     | '/app/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/v1/browser-events/$collectorKey'
     | '/app/projects/$projectId/data'
+    | '/app/projects/$projectId/events'
     | '/app/projects/$projectId'
   id:
     | '__root__'
@@ -119,6 +131,7 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId'
     | '/v1/browser-events/$collectorKey'
     | '/app/projects/$projectId/data'
+    | '/app/projects/$projectId/events'
     | '/app/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
@@ -187,16 +200,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsProjectIdDataRouteImport
       parentRoute: typeof AppProjectsProjectIdRoute
     }
+    '/app/projects/$projectId/events': {
+      id: '/app/projects/$projectId/events'
+      path: '/events'
+      fullPath: '/app/projects/$projectId/events'
+      preLoaderRoute: typeof AppProjectsProjectIdEventsRouteImport
+      parentRoute: typeof AppProjectsProjectIdRoute
+    }
   }
 }
 
 interface AppProjectsProjectIdRouteChildren {
   AppProjectsProjectIdDataRoute: typeof AppProjectsProjectIdDataRoute
+  AppProjectsProjectIdEventsRoute: typeof AppProjectsProjectIdEventsRoute
   AppProjectsProjectIdIndexRoute: typeof AppProjectsProjectIdIndexRoute
 }
 
 const AppProjectsProjectIdRouteChildren: AppProjectsProjectIdRouteChildren = {
   AppProjectsProjectIdDataRoute: AppProjectsProjectIdDataRoute,
+  AppProjectsProjectIdEventsRoute: AppProjectsProjectIdEventsRoute,
   AppProjectsProjectIdIndexRoute: AppProjectsProjectIdIndexRoute,
 }
 

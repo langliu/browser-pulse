@@ -1,7 +1,6 @@
 import { Outlet, createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { Activity, LogOut } from 'lucide-react'
 
-import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { authClient } from '#/lib/auth-client'
 import { getViewer } from '#/server/dashboard.functions'
@@ -39,12 +38,6 @@ function AppLayout() {
             </div>
           </a>
           <div className='flex items-center gap-3'>
-            <Badge
-              variant='secondary'
-              className='hidden border border-[var(--chip-line)] bg-[var(--chip-bg)] sm:inline-flex'
-            >
-              Asia/Shanghai
-            </Badge>
             <Button variant='ghost' size='sm' onClick={signOut}>
               <LogOut className='size-4' aria-hidden='true' />
               <span className='hidden sm:inline'>退出</span>

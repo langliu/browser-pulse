@@ -10,10 +10,12 @@ import {
   dailyAggregates,
   projects,
   queryApiKeys,
+  rawEvents,
   supportPolicies,
   workspaces,
 } from '#/db/schema'
 import { getAuthConfiguration } from '#/lib/auth'
+import { monthBucketStart, recentDaysRange, weekBucketStart } from '#/lib/date'
 import { createCollectorKey, createQueryApiKey, reconstructCollectorKey } from '#/lib/keys.server'
 import { getSessionUser, requireSessionUser } from '#/lib/session.server'
 
@@ -94,7 +96,6 @@ export interface DashboardState {
 
 export interface CreatedProjectCredentials {
   projectId: string
-  collectorKey: string
   queryApiKey: string
 }
 
@@ -103,7 +104,6 @@ export interface ProjectDetail {
   workspaceId: string
   name: string
   status: 'active' | 'disabled'
-  timezone: string
   collectorKey: string
   collectorOrigin: string
   origins: string[]
@@ -200,7 +200,6 @@ export const createProject = createServerFn({ method: 'POST' })
     if (!workspace) throw new Error('工作区不存在或无权访问')
 
     const projectId = crypto.randomUUID()
-    const collectorKey = await createCollectorKey()
     const queryApiKey = await createQueryApiKey()
 
     await db.batch([
@@ -208,12 +207,6 @@ export const createProject = createServerFn({ method: 'POST' })
         id: projectId,
         workspaceId: workspace.id,
         name: data.name,
-      }),
-      db.insert(collectorKeys).values({
-        id: crypto.randomUUID(),
-        projectId,
-        publicId: collectorKey.publicId,
-        version: collectorKey.version,
       }),
       db.insert(queryApiKeys).values({
         id: crypto.randomUUID(),
@@ -232,10 +225,52 @@ export const createProject = createServerFn({ method: 'POST' })
 
     return {
       projectId,
-      collectorKey: collectorKey.token,
       queryApiKey: queryApiKey.token,
     }
   })
+
+async function getOrCreateProjectCollectorKey(projectId: string) {
+  const db = getDb()
+  const existing = await db
+    .select({
+      publicId: collectorKeys.publicId,
+      version: collectorKeys.version,
+    })
+    .from(collectorKeys)
+    .where(and(eq(collectorKeys.projectId, projectId), eq(collectorKeys.status, 'active')))
+    .orderBy(desc(collectorKeys.version))
+    .get()
+  if (existing) return existing
+
+  const generated = await createCollectorKey()
+  await db.run(sql`
+    INSERT INTO collector_keys (id, project_id, public_id, version, name, status)
+    SELECT
+      ${crypto.randomUUID()},
+      ${projectId},
+      ${generated.publicId},
+      ${generated.version},
+      '默认采集键',
+      'active'
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM collector_keys
+      WHERE project_id = ${projectId} AND status = 'active'
+    )
+  `)
+
+  const created = await db
+    .select({
+      publicId: collectorKeys.publicId,
+      version: collectorKeys.version,
+    })
+    .from(collectorKeys)
+    .where(and(eq(collectorKeys.projectId, projectId), eq(collectorKeys.status, 'active')))
+    .orderBy(desc(collectorKeys.version))
+    .get()
+  if (!created) throw new Error('项目采集键创建失败')
+  return created
+}
 
 export const getProjectDetail = createServerFn({ method: 'GET' })
   .validator(projectIdInput)
@@ -248,7 +283,6 @@ export const getProjectDetail = createServerFn({ method: 'GET' })
         workspaceId: projects.workspaceId,
         name: projects.name,
         status: projects.status,
-        timezone: projects.timezone,
         lastSuccessfulCollectionAt: projects.lastSuccessfulCollectionAt,
         lastRejectedReason: projects.lastRejectedReason,
         lastRejectedAt: projects.lastRejectedAt,
@@ -263,15 +297,7 @@ export const getProjectDetail = createServerFn({ method: 'GET' })
     if (!project) throw new Error('项目不存在或无权访问')
 
     const [key, origins, aggregate] = await Promise.all([
-      db
-        .select({
-          publicId: collectorKeys.publicId,
-          version: collectorKeys.version,
-        })
-        .from(collectorKeys)
-        .where(and(eq(collectorKeys.projectId, project.id), eq(collectorKeys.status, 'active')))
-        .orderBy(desc(collectorKeys.version))
-        .get(),
+      getOrCreateProjectCollectorKey(project.id),
       db
         .select({ origin: allowedOrigins.origin })
         .from(allowedOrigins)
@@ -299,22 +325,12 @@ export const getProjectDetail = createServerFn({ method: 'GET' })
     }
   })
 
-const shanghaiDateFormatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Asia/Shanghai',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-})
-
-function shanghaiDateString(date: Date) {
-  return shanghaiDateFormatter.format(date)
-}
-
-function addDays(date: Date, days: number) {
-  const copy = new Date(date.getTime())
-  copy.setUTCDate(copy.getUTCDate() + days)
-  return copy
-}
+const timeZoneInput = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Za-z0-9_+\-./]+$/u)
+  .default('UTC')
 
 const browserFamilyEnum = [
   'Chrome',
@@ -334,6 +350,7 @@ const dashboardInput = z.object({
   projectId: z.string().uuid(),
   days: z.number().int().min(1).max(396).default(30),
   interval: z.enum(['day', 'week', 'month']).default('day'),
+  timeZone: timeZoneInput,
   osFamilies: z.array(z.enum(osFamilyEnum)).max(7).default([]),
   deviceClasses: z.array(z.enum(deviceClassEnum)).max(4).default([]),
 })
@@ -348,6 +365,18 @@ const dataDetailsInput = z.object({
   days: z.number().int().min(1).max(90).default(30),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(10).max(100).default(50),
+  timeZone: timeZoneInput,
+  browserFamily: z.enum(detailBrowserFamilyEnum).optional(),
+  osFamily: z.enum(detailOsFamilyEnum).optional(),
+  deviceClass: z.enum(detailDeviceClassEnum).optional(),
+})
+
+const rawEventsInput = z.object({
+  projectId: z.string().uuid(),
+  days: z.number().int().min(1).max(30).default(7),
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(10).max(100).default(50),
+  timeZone: timeZoneInput,
   browserFamily: z.enum(detailBrowserFamilyEnum).optional(),
   osFamily: z.enum(detailOsFamilyEnum).optional(),
   deviceClass: z.enum(detailDeviceClassEnum).optional(),
@@ -377,7 +406,7 @@ export interface SupportPolicyEntry {
 
 export interface ProjectDashboard {
   projectId: string
-  timezone: 'Asia/Shanghai'
+  timeZone: string
   from: string
   to: string
   totalEvents: number
@@ -397,7 +426,7 @@ export interface ProjectDashboard {
 }
 
 export interface ProjectDataDetailRow {
-  localDate: string
+  date: string
   browserFamily: string
   browserMajor: string
   osFamily: string
@@ -408,10 +437,33 @@ export interface ProjectDataDetailRow {
 
 export interface ProjectDataDetails {
   projectId: string
-  timezone: 'Asia/Shanghai'
+  timeZone: string
   from: string
   to: string
   rows: ProjectDataDetailRow[]
+  totalRows: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+export interface ProjectRawEventRow {
+  ingestId: string
+  collectedAt: string
+  browserFamily: string
+  browserMajor: string | null
+  osFamily: string
+  deviceClass: string
+  detectionSource: string
+  snippetVersion: string
+}
+
+export interface ProjectRawEvents {
+  projectId: string
+  timeZone: string
+  from: string
+  to: string
+  rows: ProjectRawEventRow[]
   totalRows: number
   page: number
   pageSize: number
@@ -422,7 +474,7 @@ async function requireProjectForUser(projectId: string) {
   const user = await requireSessionUser()
   const db = getDb()
   const project = await db
-    .select({ id: projects.id, timezone: projects.timezone })
+    .select({ id: projects.id })
     .from(projects)
     .innerJoin(
       workspaces,
@@ -434,40 +486,25 @@ async function requireProjectForUser(projectId: string) {
   return { project, user }
 }
 
-function weekBucketStart(localDate: string) {
-  const [year, month, day] = localDate.split('-').map(Number)
-  const date = new Date(Date.UTC(year, month - 1, day))
-  const weekday = (date.getUTCDay() + 6) % 7
-  return addDays(date, -weekday)
-}
-
-function monthBucketStart(localDate: string) {
-  const [year, month] = localDate.split('-').map(Number)
-  return new Date(Date.UTC(year, month - 1, 1))
-}
-
 export const getProjectDashboard = createServerFn({ method: 'GET' })
   .validator(dashboardInput)
   .handler(async ({ data }): Promise<ProjectDashboard> => {
     const { project } = await requireProjectForUser(data.projectId)
     const db = getDb()
 
-    const today = shanghaiDateString(new Date())
-    const fromDate = addDays(new Date(today + 'T00:00:00Z'), -(data.days - 1))
-    const from = shanghaiDateString(fromDate)
-    const toDate = addDays(new Date(today + 'T00:00:00Z'), 1)
-    const to = shanghaiDateString(toDate)
+    const range = recentDaysRange(data.days, data.timeZone)
+    const { from, to, utcFrom, utcToExclusive, timeZone } = range
 
     const filters = [
       eq(dailyAggregates.projectId, project.id),
-      gte(dailyAggregates.localDate, from),
-      lt(dailyAggregates.localDate, to),
+      gte(dailyAggregates.utcDate, utcFrom),
+      lt(dailyAggregates.utcDate, utcToExclusive),
     ]
 
     const [rows, policyRows] = await Promise.all([
       db
         .select({
-          localDate: dailyAggregates.localDate,
+          utcDate: dailyAggregates.utcDate,
           browserFamily: dailyAggregates.browserFamily,
           browserMajor: dailyAggregates.browserMajor,
           osFamily: dailyAggregates.osFamily,
@@ -560,11 +597,11 @@ export const getProjectDashboard = createServerFn({ method: 'GET' })
 
       let bucketStart: string
       if (data.interval === 'week') {
-        bucketStart = shanghaiDateString(weekBucketStart(row.localDate))
+        bucketStart = weekBucketStart(row.utcDate)
       } else if (data.interval === 'month') {
-        bucketStart = shanghaiDateString(monthBucketStart(row.localDate))
+        bucketStart = monthBucketStart(row.utcDate)
       } else {
-        bucketStart = row.localDate
+        bucketStart = row.utcDate
       }
       const trendPoint = trendMap.get(bucketStart)
       if (trendPoint) {
@@ -605,7 +642,7 @@ export const getProjectDashboard = createServerFn({ method: 'GET' })
 
     return {
       projectId: project.id,
-      timezone: 'Asia/Shanghai',
+      timeZone,
       from,
       to,
       totalEvents,
@@ -637,16 +674,13 @@ export const getProjectDataDetails = createServerFn({ method: 'GET' })
     const { project } = await requireProjectForUser(data.projectId)
     const db = getDb()
 
-    const today = shanghaiDateString(new Date())
-    const fromDate = addDays(new Date(today + 'T00:00:00Z'), -(data.days - 1))
-    const from = shanghaiDateString(fromDate)
-    const toDate = addDays(new Date(today + 'T00:00:00Z'), 1)
-    const to = shanghaiDateString(toDate)
+    const range = recentDaysRange(data.days, data.timeZone)
+    const { from, to, utcFrom, utcToExclusive, timeZone } = range
 
     const filters = [
       eq(dailyAggregates.projectId, project.id),
-      gte(dailyAggregates.localDate, from),
-      lt(dailyAggregates.localDate, to),
+      gte(dailyAggregates.utcDate, utcFrom),
+      lt(dailyAggregates.utcDate, utcToExclusive),
     ]
     if (data.browserFamily) {
       filters.push(eq(dailyAggregates.browserFamily, data.browserFamily))
@@ -667,7 +701,7 @@ export const getProjectDataDetails = createServerFn({ method: 'GET' })
         .get(),
       db
         .select({
-          localDate: dailyAggregates.localDate,
+          utcDate: dailyAggregates.utcDate,
           browserFamily: dailyAggregates.browserFamily,
           browserMajor: dailyAggregates.browserMajor,
           osFamily: dailyAggregates.osFamily,
@@ -678,7 +712,7 @@ export const getProjectDataDetails = createServerFn({ method: 'GET' })
         .from(dailyAggregates)
         .where(where)
         .orderBy(
-          desc(dailyAggregates.localDate),
+          desc(dailyAggregates.utcDate),
           desc(dailyAggregates.eventCount),
           dailyAggregates.browserFamily,
         )
@@ -691,12 +725,91 @@ export const getProjectDataDetails = createServerFn({ method: 'GET' })
 
     return {
       projectId: project.id,
-      timezone: 'Asia/Shanghai',
+      timeZone,
       from,
       to,
       rows: rows.map((row) => ({
-        ...row,
+        date: row.utcDate,
+        browserFamily: row.browserFamily,
+        browserMajor: row.browserMajor,
+        osFamily: row.osFamily,
+        deviceClass: row.deviceClass,
+        detectionSource: row.detectionSource,
         eventCount: Number(row.eventCount),
+      })),
+      totalRows,
+      page: data.page,
+      pageSize: data.pageSize,
+      totalPages,
+    }
+  })
+
+export const getProjectRawEvents = createServerFn({ method: 'GET' })
+  .validator(rawEventsInput)
+  .handler(async ({ data }): Promise<ProjectRawEvents> => {
+    const { project } = await requireProjectForUser(data.projectId)
+    const db = getDb()
+
+    const range = recentDaysRange(data.days, data.timeZone)
+    const { from, to, fromMs, toMs, timeZone } = range
+
+    const filters = [
+      eq(rawEvents.projectId, project.id),
+      gte(rawEvents.collectedAt, new Date(fromMs)),
+      lt(rawEvents.collectedAt, new Date(toMs)),
+    ]
+    if (data.browserFamily) {
+      filters.push(eq(rawEvents.browserFamily, data.browserFamily))
+    }
+    if (data.osFamily) {
+      filters.push(eq(rawEvents.osFamily, data.osFamily))
+    }
+    if (data.deviceClass) {
+      filters.push(eq(rawEvents.deviceClass, data.deviceClass))
+    }
+
+    const where = and(...filters)
+    const [countResult, rows] = await Promise.all([
+      db
+        .select({ total: sql<number>`count(*)` })
+        .from(rawEvents)
+        .where(where)
+        .get(),
+      db
+        .select({
+          ingestId: rawEvents.ingestId,
+          collectedAt: rawEvents.collectedAt,
+          browserFamily: rawEvents.browserFamily,
+          browserMajor: rawEvents.browserMajor,
+          osFamily: rawEvents.osFamily,
+          deviceClass: rawEvents.deviceClass,
+          detectionSource: rawEvents.detectionSource,
+          snippetVersion: rawEvents.snippetVersion,
+        })
+        .from(rawEvents)
+        .where(where)
+        .orderBy(desc(rawEvents.collectedAt), desc(rawEvents.ingestId))
+        .limit(data.pageSize)
+        .offset((data.page - 1) * data.pageSize),
+    ])
+
+    const totalRows = Number(countResult?.total ?? 0)
+    const totalPages = Math.max(1, Math.ceil(totalRows / data.pageSize))
+
+    return {
+      projectId: project.id,
+      timeZone,
+      from,
+      to,
+      rows: rows.map((row) => ({
+        ingestId: row.ingestId,
+        collectedAt: row.collectedAt.toISOString(),
+        browserFamily: row.browserFamily,
+        browserMajor: row.browserMajor,
+        osFamily: row.osFamily,
+        deviceClass: row.deviceClass,
+        detectionSource: row.detectionSource,
+        snippetVersion: row.snippetVersion,
       })),
       totalRows,
       page: data.page,

@@ -167,7 +167,7 @@ schema 使用严格校验，未知字段会被拒绝。客户端不能在正文�
 - `ingestId`：服务端生成，用于队列幂等；
 - `collectedAt`：服务端接收时间，UTC 存储。
 
-Queue Consumer 首先以 `ingestId` 做 `INSERT OR IGNORE`，只有首次写入才增加 `daily_aggregates.event_count`。每日聚合按 `Asia/Shanghai` 的自然日分桶。
+Queue Consumer 首先以 `ingestId` 做 `INSERT OR IGNORE`，只有首次写入才增加 `daily_aggregates.event_count`。每日聚合按 UTC 自然日分桶；查询时由应用层按客户端当前时区换算筛选条件。
 
 ## 隐私边界
 

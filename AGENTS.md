@@ -30,7 +30,7 @@ pnpm deploy              # 构建 + wrangler deploy
 - **Server Functions**：`src/server/dashboard.functions.ts` 承载控制台所有数据操作（`createServerFn` + zod `validator`）。浏览器端直接 import 调用，不要另建 REST 路由。
 - **服务端环境变量**：通过 `import { env } from 'cloudflare:workers'` 读取（`src/lib/auth.ts`、`src/lib/keys.server.ts` 等）。完整清单见 `.env.example`。
 - **采集 API**：`src/routes/v1/browser-events/$collectorKey.ts`，POST + 签名 collectorKey + Origin 白名单校验，成功返回 `202` 并入队。
-- **队列消费**：`src/ingest/consumer.ts`，按 `ingestId` 幂等写入 `raw_events` 并累计 `daily_aggregates`（上海时区 `local_date` 分桶）。
+- **队列消费**：`src/ingest/consumer.ts`，按 `ingestId` 幂等写入 `raw_events` 并累计 `daily_aggregates`（UTC `utc_date` 分桶）。
 - **路由约定**：文件式路由（`src/routes/`）；API 路由用 `server.handlers`，受保护页面用 loader + `requireSessionUser()`。
 
 ## 必须遵守的产品合同
@@ -51,7 +51,7 @@ pnpm deploy              # 构建 + wrangler deploy
 
 - 一个 Google 账号最多一个工作区（`workspaces.ownerUserId` 唯一），重复创建必须幂等返回已有工作区。
 - Origin 白名单精确匹配（scheme + host + port），仅 HTTPS（localhost 例外），创建时校验并去重。
-- 聚合按 `Asia/Shanghai` 分桶与展示；`raw_events` 保留 30 天，`daily_aggregates` 保留 13 个月（`src/ingest/consumer.ts` 的 Cron 清理）。
+- 聚合按 UTC 自然日存储；查询时按客户端当前时区计算筛选与展示窗口；`raw_events` 保留 30 天，`daily_aggregates` 保留 13 个月（`src/ingest/consumer.ts` 的 Cron 清理）。
 - 看板语义：`belowSupportRate = belowSupportEvents / policyEligibleEvents`，**分母为 0 时必须返回 `null`（不是 0）**；分布仅展示占比前 5；策略修改只重算不改写历史事件。
 - 支持策略表 `support_policies` 主键为 `(projectId, browserFamily)`。
 

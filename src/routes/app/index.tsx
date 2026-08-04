@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { ArrowRight, CheckCircle2, FolderKanban, KeyRound, Plus, Radio } from 'lucide-react'
+import { ArrowRight, CheckCircle2, FolderKanban, Plus, Radio } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { z } from 'zod'
@@ -222,7 +222,7 @@ function Dashboard() {
             </div>
             <Button asChild variant='outline' size='sm'>
               <Link to='/app/projects/$projectId' params={{ projectId: credentials.projectId }}>
-                查看接入代码
+                查看项目详情与接入代码
                 <ArrowRight className='size-4' aria-hidden='true' />
               </Link>
             </Button>
@@ -352,8 +352,8 @@ function Dashboard() {
                 className='h-11 w-full rounded-xl bg-[var(--sea-ink)] text-white shadow-[0_10px_24px_rgba(23,58,64,0.18)] hover:bg-[var(--lagoon-deep)]'
                 disabled={submitting}
               >
-                <KeyRound className='size-4' aria-hidden='true' />
-                {submitting ? '正在创建…' : '创建并生成密钥'}
+                <Plus className='size-4' aria-hidden='true' />
+                {submitting ? '正在创建…' : '创建项目'}
               </Button>
             </form>
           </CardContent>

@@ -6,16 +6,12 @@ import { dailyAggregates, projects, rawEvents, session, verification } from '#/d
 import { ingestMessageSchema } from './contract'
 import type { IngestMessage } from './contract'
 
-const shanghaiDateFormatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Asia/Shanghai',
+const utcDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'UTC',
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
 })
-
-function shanghaiDate(date: Date) {
-  return shanghaiDateFormatter.format(date)
-}
 
 async function persistMessage(message: IngestMessage, database: D1Database) {
   const collectedAt = new Date(message.collectedAt)
@@ -42,13 +38,13 @@ async function persistMessage(message: IngestMessage, database: D1Database) {
     database
       .prepare(
         `INSERT INTO daily_aggregates (
-          project_id, local_date, browser_family, browser_major, os_family,
+          project_id, utc_date, browser_family, browser_major, os_family,
           device_class, detection_source, event_count, updated_at
         )
         SELECT ?, ?, ?, ?, ?, ?, ?, 1, ?
         WHERE changes() = 1
         ON CONFLICT (
-          project_id, local_date, browser_family, browser_major, os_family,
+          project_id, utc_date, browser_family, browser_major, os_family,
           device_class, detection_source
         ) DO UPDATE SET
           event_count = daily_aggregates.event_count + 1,
@@ -56,7 +52,7 @@ async function persistMessage(message: IngestMessage, database: D1Database) {
       )
       .bind(
         message.projectId,
-        shanghaiDate(collectedAt),
+        utcDateFormatter.format(collectedAt),
         message.browserFamily,
         message.browserMajor ?? '',
         message.osFamily,
@@ -110,12 +106,12 @@ export async function runRetentionCleanup(environment: Cloudflare.Env) {
   const rawCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   const aggregateCutoffDate = new Date(now)
   aggregateCutoffDate.setUTCMonth(aggregateCutoffDate.getUTCMonth() - 13)
-  const aggregateCutoff = shanghaiDate(aggregateCutoffDate)
+  const aggregateCutoff = utcDateFormatter.format(aggregateCutoffDate)
   const db = getDb(environment.DB)
 
   await db.batch([
     db.delete(rawEvents).where(lt(rawEvents.collectedAt, rawCutoff)),
-    db.delete(dailyAggregates).where(lt(dailyAggregates.localDate, aggregateCutoff)),
+    db.delete(dailyAggregates).where(lt(dailyAggregates.utcDate, aggregateCutoff)),
     db.delete(session).where(lt(session.expiresAt, now)),
     db.delete(verification).where(lt(verification.expiresAt, now)),
   ])

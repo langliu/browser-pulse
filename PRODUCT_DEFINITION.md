@@ -115,9 +115,9 @@ Browser Pulse 通过 Better Auth 的 Google social provider 接入登录。Bette
 
 1. 用户点击“使用 Google 登录”，由 Better Auth 完成 Google 回调并建立 D1 会话。
 2. 首次登录只创建账号；用户填写工作区名称后创建唯一工作区，后续登录直接进入该工作区。
-3. 用户在工作区下创建项目，填写项目名、允许接入的生产/测试 Origin；项目时区固定为 `Asia/Shanghai`。
-4. 系统生成公开 `collectorKey` 和服务端 `queryApiKey`。
-5. 用户从控制台复制项目专属的内联采集代码片段，并在自己的隐私告知或同意流程完成后显式调用 `collectBrowserPulse()`。
+3. 用户在工作区下创建项目，填写项目名、允许接入的生产/测试 Origin。
+4. 系统在创建项目时生成服务端 `queryApiKey`；用户首次打开项目详情时，系统为该项目创建（或读取）公开 `collectorKey`。
+5. 用户从项目详情的“接入代码”标签复制项目专属的内联采集代码片段，并在自己的隐私告知或同意流程完成后显式调用 `collectBrowserPulse()`。
 6. 代码片段在当前页面本地识别最小浏览器环境字段，携带 `collectorKey` 发送一次事件。
 7. 采集 Worker 校验键、Origin、正文、额度和速率限制，成功进入队列后返回 `202`。
 8. 队列消费者写入 30 天原始事件并更新每日聚合；5 分钟内看板和聚合 API 可见。
@@ -374,7 +374,7 @@ Authorization: Bearer bpq_live_...
 - `interval=day|week|month`；
 - 可重复的 `osFamily` 和 `deviceClass`；
 - 未传时间时默认最近 30 个完整自然日；最长跨度 13 个月；
-- UTC 存储，按项目固定时区 `Asia/Shanghai` 分桶和展示。
+- UTC 存储日桶；查询按客户端当前时区计算筛选窗口并展示。
 
 响应顶层字段：
 
@@ -383,7 +383,7 @@ Authorization: Bearer bpq_live_...
   projectId: string
   from: string
   to: string
-  timezone: 'Asia/Shanghai'
+  timeZone: string
   totalEvents: number
   identifiableEvents: number
   policyEligibleEvents: number
@@ -481,7 +481,7 @@ flowchart LR
 - `query_api_keys`：查询键摘要、名称、状态和最后使用时间；
 - `support_policies`：浏览器家族与最低主版本；
 - `raw_events`：服务端 `ingestId`、`projectId`、接收时间和最小数据字典；
-- `daily_aggregates`：项目、上海自然日、筛选维度、版本维度和事件数。
+- `daily_aggregates`：项目、UTC 自然日、筛选维度、版本维度和事件数。
 
 队列消费者必须在同一幂等边界内完成“首次写入原始事件”和“聚合计数增加”。同一 `ingestId` 重投不能重复增加聚合。项目删除或停用后，消费者必须再次检查项目状态，丢弃仍在队列中的旧消息。
 

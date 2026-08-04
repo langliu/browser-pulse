@@ -97,7 +97,6 @@ export const projects = sqliteTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    timezone: text('timezone').default('Asia/Shanghai').notNull(),
     status: text('status', { enum: ['active', 'disabled'] })
       .default('active')
       .notNull(),
@@ -218,7 +217,7 @@ export const dailyAggregates = sqliteTable(
     projectId: text('project_id')
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' }),
-    localDate: text('local_date').notNull(),
+    utcDate: text('utc_date').notNull(),
     browserFamily: text('browser_family').notNull(),
     browserMajor: text('browser_major').default('').notNull(),
     osFamily: text('os_family').notNull(),
@@ -234,7 +233,7 @@ export const dailyAggregates = sqliteTable(
     primaryKey({
       columns: [
         table.projectId,
-        table.localDate,
+        table.utcDate,
         table.browserFamily,
         table.browserMajor,
         table.osFamily,

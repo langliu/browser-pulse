@@ -10,7 +10,9 @@ import {
   KeyRound,
   Loader2,
   MousePointerClick,
+  Pencil,
   Percent,
+  Radio,
   ShieldCheck,
   Table2,
   TrendingDown,
@@ -23,6 +25,14 @@ import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '#/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '#/components/ui/dialog'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
@@ -78,6 +88,7 @@ function ProjectPage() {
   const [savingPolicies, setSavingPolicies] = useState(false)
   const [policiesSaved, setPoliciesSaved] = useState(false)
   const [policyError, setPolicyError] = useState<string | null>(null)
+  const [policyDialogOpen, setPolicyDialogOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -87,6 +98,7 @@ function ProjectPage() {
         projectId: project.id,
         days,
         interval,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         osFamilies,
         deviceClasses,
       },
@@ -132,11 +144,13 @@ function ProjectPage() {
           projectId: project.id,
           days,
           interval,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           osFamilies,
           deviceClasses,
         },
       })
       setDashboard(refreshed)
+      setPolicyDialogOpen(false)
     } catch (caught) {
       setPolicyError(caught instanceof Error ? caught.message : '支持策略保存失败')
     } finally {
@@ -170,25 +184,152 @@ function ProjectPage() {
         </Link>
       </Button>
 
-      <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
-        <div>
+      <div className='flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
+        <div className='min-w-0'>
           <div className='mb-3 flex items-center gap-2'>
             <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
               {project.status === 'active' ? '采集中' : '已停用'}
             </Badge>
-            <span className='text-muted-foreground text-sm'>{project.timezone}</span>
           </div>
-          <h1 className='font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
-            {project.name}
-          </h1>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
+            <h1 className='font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
+              {project.name}
+            </h1>
+            <div className='flex min-w-0 flex-wrap items-center gap-2'>
+              <span className='text-muted-foreground inline-flex items-center gap-1 text-xs font-medium'>
+                <ShieldCheck className='size-3.5 text-[var(--palm)]' aria-hidden='true' />
+                支持策略
+              </span>
+              {dashboard?.policies.length ? (
+                dashboard.policies.map((policy) => (
+                  <span
+                    key={policy.browserFamily}
+                    className='inline-flex items-center gap-1 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-2.5 py-1 text-xs font-medium text-[var(--sea-ink)]'
+                  >
+                    <span>{policy.browserFamily}</span>
+                    <span className='text-[var(--sea-ink-soft)] tabular-nums'>
+                      ≥{policy.minimumSupportedMajor}
+                    </span>
+                  </span>
+                ))
+              ) : (
+                <span className='text-muted-foreground text-xs'>未配置</span>
+              )}
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                className='h-7 rounded-full px-2.5'
+                disabled={loading && !dashboard}
+                onClick={() => {
+                  setPolicyError(null)
+                  setPolicyDialogOpen(true)
+                }}
+              >
+                <Pencil className='size-3.5' aria-hidden='true' />
+                编辑
+              </Button>
+              {policiesSaved ? (
+                <span className='text-xs text-[var(--palm)]'>已保存并重算</span>
+              ) : null}
+            </div>
+          </div>
         </div>
-        <Button asChild variant='outline'>
-          <Link to='/app/projects/$projectId/data' params={{ projectId: project.id }}>
-            <Table2 className='size-4' aria-hidden='true' />
-            数据明细
-          </Link>
-        </Button>
+        <div className='flex flex-wrap items-center gap-2'>
+          <Button asChild variant='outline'>
+            <Link to='/app/projects/$projectId/events' params={{ projectId: project.id }}>
+              <Radio className='size-4' aria-hidden='true' />
+              实时数据
+            </Link>
+          </Button>
+          <Button asChild variant='outline'>
+            <Link to='/app/projects/$projectId/data' params={{ projectId: project.id }}>
+              <Table2 className='size-4' aria-hidden='true' />
+              数据明细
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      <Dialog
+        open={policyDialogOpen}
+        onOpenChange={(open) => {
+          setPolicyDialogOpen(open)
+          if (!open) setPolicyError(null)
+        }}
+      >
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2'>
+              <ShieldCheck className='size-4 text-[var(--palm)]' aria-hidden='true' />
+              编辑最低支持版本
+            </DialogTitle>
+            <DialogDescription>
+              为已识别浏览器家族设置整数主版本阈值；未配置的家族不计入策略分母。修改后立即重算，不改写历史事件。
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            key={policyDialogOpen ? 'open' : 'closed'}
+            onSubmit={submitPolicies}
+            className='space-y-4'
+          >
+            <div className='grid gap-3 sm:grid-cols-2'>
+              {policyFamilies.map((family) => {
+                const current = dashboard?.policies.find(
+                  (policy) => policy.browserFamily === family,
+                )
+                return (
+                  <div
+                    key={family}
+                    className='flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/70 px-4 py-3'
+                  >
+                    <Label
+                      htmlFor={`policy-${family}`}
+                      className='text-sm font-medium text-[var(--sea-ink)]'
+                    >
+                      {family}
+                    </Label>
+                    <Input
+                      id={`policy-${family}`}
+                      name={`policy-${family}`}
+                      type='number'
+                      min={1}
+                      max={999}
+                      defaultValue={current?.minimumSupportedMajor ?? ''}
+                      placeholder='未配置'
+                      className='w-24 text-right'
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            {policyFamilies.length === 0 ? (
+              <p className='text-muted-foreground text-sm'>
+                尚无已识别家族，收集到事件后可配置支持线。
+              </p>
+            ) : null}
+            {policyError ? (
+              <Alert variant='destructive'>
+                <AlertTitle>保存失败</AlertTitle>
+                <AlertDescription>{policyError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <DialogFooter>
+              <Button
+                type='button'
+                variant='outline'
+                disabled={savingPolicies}
+                onClick={() => setPolicyDialogOpen(false)}
+              >
+                取消
+              </Button>
+              <Button type='submit' disabled={savingPolicies || policyFamilies.length === 0}>
+                {savingPolicies ? '保存中…' : '保存支持策略'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue='overview' className='mt-8'>
         <TabsList className='bg-white/70'>
@@ -213,11 +354,6 @@ function ProjectPage() {
             deviceClasses={deviceClasses}
             setDeviceClasses={setDeviceClasses}
             toggleFilter={toggleFilter}
-            policyFamilies={policyFamilies}
-            savingPolicies={savingPolicies}
-            policiesSaved={policiesSaved}
-            policyError={policyError}
-            onSubmitPolicies={submitPolicies}
           />
         </TabsContent>
 
@@ -309,22 +445,42 @@ function MetricCard({
   icon: React.ReactNode
   label: string
   value: string
-  detail: string
+  detail: React.ReactNode
 }) {
   return (
-    <Card className='border-[var(--line)] bg-[var(--surface)] shadow-none'>
-      <CardContent className='flex items-start gap-3 px-5 py-5'>
-        <div className='mt-0.5 text-[var(--palm)]'>{icon}</div>
-        <div className='min-w-0'>
-          <p className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
+    <Card className='h-full gap-0 border-[var(--line)] bg-[var(--surface)] py-0 shadow-none'>
+      <CardContent className='flex h-full flex-col gap-2 px-4 py-3'>
+        <div className='flex items-center gap-2 text-[var(--palm)]'>
+          <span className='inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--chip-bg)] ring-1 ring-[var(--chip-line)]'>
+            {icon}
+          </span>
+          <p className='text-muted-foreground text-[11px] font-medium tracking-[0.08em] uppercase'>
             {label}
           </p>
-          <p className='mt-1 truncate text-lg font-semibold text-[var(--sea-ink)]'>{value}</p>
-          <p className='text-muted-foreground mt-1 text-xs'>{detail}</p>
+        </div>
+        <div className='min-w-0'>
+          <p
+            className='text-xl leading-none font-semibold break-words text-[var(--sea-ink)] tabular-nums'
+            title={value}
+          >
+            {value}
+          </p>
+          <div className='text-muted-foreground mt-1.5 text-xs leading-4 break-words'>{detail}</div>
         </div>
       </CardContent>
     </Card>
   )
+}
+
+function formatMetricDateTime(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
 }
 
 function FilterChip({
@@ -365,11 +521,6 @@ interface DashboardOverviewProps {
   deviceClasses: DeviceClassFilter[]
   setDeviceClasses: (value: DeviceClassFilter[]) => void
   toggleFilter: <T extends string>(value: T, current: T[], setter: (next: T[]) => void) => void
-  policyFamilies: string[]
-  savingPolicies: boolean
-  policiesSaved: boolean
-  policyError: string | null
-  onSubmitPolicies: (event: React.FormEvent<HTMLFormElement>) => void
 }
 
 function DashboardOverview({
@@ -386,11 +537,6 @@ function DashboardOverview({
   deviceClasses,
   setDeviceClasses,
   toggleFilter,
-  policyFamilies,
-  savingPolicies,
-  policiesSaved,
-  policyError,
-  onSubmitPolicies,
 }: DashboardOverviewProps) {
   if (loadError) {
     return (
@@ -453,27 +599,27 @@ function DashboardOverview({
           refreshing ? 'opacity-60' : 'opacity-100'
         }`}
       >
-        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-5'>
+        <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-5'>
           <MetricCard
-            icon={<Activity className='size-5' aria-hidden='true' />}
+            icon={<Activity className='size-4' aria-hidden='true' />}
             label='采集事件'
             value={dashboard.totalEvents.toLocaleString('zh-CN')}
-            detail={`${dashboard.from} 至 ${dashboard.to}（Asia/Shanghai）`}
+            detail={`${dashboard.from} → ${dashboard.to}`}
           />
           <MetricCard
-            icon={<Percent className='size-5' aria-hidden='true' />}
+            icon={<Percent className='size-4' aria-hidden='true' />}
             label='可识别占比'
             value={formatPercent(dashboard.identifiableRate)}
             detail='可识别浏览器主版本'
           />
           <MetricCard
-            icon={<ShieldCheck className='size-5' aria-hidden='true' />}
+            icon={<ShieldCheck className='size-4' aria-hidden='true' />}
             label='策略覆盖率'
             value={formatPercent(dashboard.policyCoverageRate)}
             detail='已配置支持线的样本'
           />
           <MetricCard
-            icon={<TrendingDown className='size-5' aria-hidden='true' />}
+            icon={<TrendingDown className='size-4' aria-hidden='true' />}
             label='低于支持线'
             value={formatPercent(dashboard.belowSupportRate)}
             detail={
@@ -483,20 +629,20 @@ function DashboardOverview({
             }
           />
           <MetricCard
-            icon={<CheckCircle2 className='size-5' aria-hidden='true' />}
+            icon={<CheckCircle2 className='size-4' aria-hidden='true' />}
             label='最近成功采集'
             value={
               project.lastSuccessfulCollectionAt
-                ? new Date(project.lastSuccessfulCollectionAt).toLocaleString('zh-CN')
+                ? formatMetricDateTime(project.lastSuccessfulCollectionAt)
                 : '尚未收到'
             }
             detail='队列消费完成后更新'
           />
         </div>
 
-        <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
-          <CardContent className='space-y-4 px-5 py-5'>
-            <div className='flex flex-wrap items-center gap-x-6 gap-y-3'>
+        <Card className='gap-0 border-[var(--line)] bg-[var(--surface-strong)] py-0 shadow-none'>
+          <CardContent className='space-y-2.5 px-4 py-3'>
+            <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
               <div className='flex items-center gap-1 rounded-full bg-white/70 p-1'>
                 {DAY_OPTIONS.map((option) => (
                   <button
@@ -531,7 +677,7 @@ function DashboardOverview({
               </div>
             </div>
 
-            <div className='flex flex-wrap items-center gap-x-6 gap-y-3'>
+            <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
               <div className='flex flex-wrap items-center gap-2'>
                 <span className='text-muted-foreground text-xs font-medium'>操作系统</span>
                 {dashboard.availableOsFamilies.map((family) => (
@@ -614,69 +760,6 @@ function DashboardOverview({
             </CardContent>
           </Card>
         </div>
-
-        <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
-          <CardHeader>
-            <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
-              <ShieldCheck className='size-5' aria-hidden='true' />
-              最低支持版本
-            </CardTitle>
-            <CardDescription>
-              为已识别浏览器家族设置整数主版本阈值；未配置的家族不计入策略分母。修改后立即重算，不改写历史事件。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmitPolicies} className='space-y-4'>
-              <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
-                {policyFamilies.map((family) => {
-                  const current = dashboard.policies.find(
-                    (policy) => policy.browserFamily === family,
-                  )
-                  return (
-                    <div
-                      key={family}
-                      className='flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/60 px-4 py-3'
-                    >
-                      <Label
-                        htmlFor={`policy-${family}`}
-                        className='text-sm font-medium text-[var(--sea-ink)]'
-                      >
-                        {family}
-                      </Label>
-                      <Input
-                        id={`policy-${family}`}
-                        name={`policy-${family}`}
-                        type='number'
-                        min={1}
-                        max={999}
-                        defaultValue={current?.minimumSupportedMajor ?? ''}
-                        placeholder='未配置'
-                        className='w-24 text-right'
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-              {policyFamilies.length === 0 && (
-                <p className='text-muted-foreground text-sm'>
-                  尚无已识别家族，收集到事件后可配置支持线。
-                </p>
-              )}
-              {policyError && (
-                <Alert variant='destructive'>
-                  <AlertTitle>保存失败</AlertTitle>
-                  <AlertDescription>{policyError}</AlertDescription>
-                </Alert>
-              )}
-              <div className='flex items-center gap-3'>
-                <Button type='submit' disabled={savingPolicies}>
-                  {savingPolicies ? '保存中…' : '保存支持策略'}
-                </Button>
-                {policiesSaved && <span className='text-sm text-[var(--palm)]'>已保存并重算</span>}
-              </div>
-            </form>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

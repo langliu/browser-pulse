@@ -15,6 +15,20 @@
       "when": 1785770605820,
       "tag": "0001_tricky_sandman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785858299684,
+      "tag": "0002_utc_date_buckets",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785859020609,
+      "tag": "0003_drop_project_timezone",
+      "breakpoints": true
     }
   ]
 }
