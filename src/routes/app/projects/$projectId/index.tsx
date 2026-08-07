@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import {
   Activity,
   ArrowLeft,
@@ -17,7 +17,8 @@ import {
   Table2,
   TrendingDown,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 
 import { DistributionChart, TrendChart, formatPercent } from '#/components/charts'
 import { CopyButton } from '#/components/copy-button'
@@ -36,11 +37,14 @@ import {
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
+import { Textarea } from '#/components/ui/textarea'
 import { buildCollectorSnippet } from '#/lib/collector-snippet'
 import {
   getProjectDashboard,
   getProjectDetail,
   saveSupportPolicies,
+  updateProject,
+  updateProjectOrigins,
 } from '#/server/dashboard.functions'
 import type { ProjectDashboard, ProjectDetail } from '#/server/dashboard.functions'
 
@@ -77,6 +81,7 @@ const BROWSER_FAMILIES = [
 
 function ProjectPage() {
   const project = Route.useLoaderData()
+  const router = useRouter()
   const snippet = buildCollectorSnippet(project.collectorOrigin, project.collectorKey)
   const [days, setDays] = useState<number>(30)
   const [interval, setInterval] = useState<'day' | 'week' | 'month'>('day')
@@ -89,6 +94,19 @@ function ProjectPage() {
   const [policiesSaved, setPoliciesSaved] = useState(false)
   const [policyError, setPolicyError] = useState<string | null>(null)
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false)
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false)
+  const [savingProject, setSavingProject] = useState(false)
+  const [projectError, setProjectError] = useState<string | null>(null)
+  const [originsDraft, setOriginsDraft] = useState(() => project.origins.join('\n'))
+  const [savingOrigins, setSavingOrigins] = useState(false)
+  const [originsSaved, setOriginsSaved] = useState(false)
+  const [originsError, setOriginsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setOriginsDraft(project.origins.join('\n'))
+    setOriginsError(null)
+    setOriginsSaved(false)
+  }, [project.id, project.origins])
 
   useEffect(() => {
     let cancelled = false
@@ -120,7 +138,7 @@ function ProjectPage() {
     }
   }, [project.id, days, interval, osFamilies, deviceClasses])
 
-  async function submitPolicies(event: React.FormEvent<HTMLFormElement>) {
+  async function submitPolicies(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSavingPolicies(true)
     setPolicyError(null)
@@ -159,21 +177,58 @@ function ProjectPage() {
     }
   }
 
+  async function submitProjectEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSavingProject(true)
+    setProjectError(null)
+    const form = new FormData(event.currentTarget)
+    const nextStatus = String(form.get('status') ?? project.status)
+    try {
+      await updateProject({
+        data: {
+          projectId: project.id,
+          name: String(form.get('name') ?? ''),
+          status: nextStatus === 'disabled' ? 'disabled' : 'active',
+        },
+      })
+      setProjectDialogOpen(false)
+      await router.invalidate()
+    } catch (caught) {
+      setProjectError(caught instanceof Error ? caught.message : '项目更新失败')
+    } finally {
+      setSavingProject(false)
+    }
+  }
+
+  async function submitOrigins(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSavingOrigins(true)
+    setOriginsError(null)
+    setOriginsSaved(false)
+    const origins = originsDraft
+      .split(/\r?\n/u)
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+    try {
+      await updateProjectOrigins({
+        data: {
+          projectId: project.id,
+          origins,
+        },
+      })
+      setOriginsSaved(true)
+      await router.invalidate()
+      window.setTimeout(() => setOriginsSaved(false), 1800)
+    } catch (caught) {
+      setOriginsError(caught instanceof Error ? caught.message : 'Origin 更新失败')
+    } finally {
+      setSavingOrigins(false)
+    }
+  }
+
   function toggleFilter<T extends string>(value: T, current: T[], setter: (next: T[]) => void) {
     setter(current.includes(value) ? current.filter((item) => item !== value) : [...current, value])
   }
-
-  const policyFamilies = useMemo(() => {
-    const present = new Set(
-      (dashboard?.distribution ?? [])
-        .filter((item) => item.status !== 'unknown')
-        .map((item) => item.browserFamily),
-    )
-    for (const policy of dashboard?.policies ?? []) {
-      present.add(policy.browserFamily)
-    }
-    return BROWSER_FAMILIES.filter((family) => present.has(family))
-  }, [dashboard])
 
   return (
     <main className='mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10'>
@@ -192,9 +247,24 @@ function ProjectPage() {
             </Badge>
           </div>
           <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
-            <h1 className='font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
-              {project.name}
-            </h1>
+            <div className='flex min-w-0 flex-wrap items-center gap-3'>
+              <h1 className='font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
+                {project.name}
+              </h1>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                className='h-8 rounded-full px-3'
+                onClick={() => {
+                  setProjectError(null)
+                  setProjectDialogOpen(true)
+                }}
+              >
+                <Pencil className='size-3.5' aria-hidden='true' />
+                编辑项目
+              </Button>
+            </div>
             <div className='flex min-w-0 flex-wrap items-center gap-2'>
               <span className='text-muted-foreground inline-flex items-center gap-1 text-xs font-medium'>
                 <ShieldCheck className='size-3.5 text-[var(--palm)]' aria-hidden='true' />
@@ -252,6 +322,83 @@ function ProjectPage() {
       </div>
 
       <Dialog
+        open={projectDialogOpen}
+        onOpenChange={(open) => {
+          setProjectDialogOpen(open)
+          if (!open) setProjectError(null)
+        }}
+      >
+        <DialogContent className='max-w-md'>
+          <DialogHeader>
+            <DialogTitle>编辑项目</DialogTitle>
+            <DialogDescription>
+              修改项目名称或采集状态。停用后新事件会被拒绝，历史数据保留。
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            key={projectDialogOpen ? 'open' : 'closed'}
+            className='space-y-4'
+            onSubmit={submitProjectEdit}
+          >
+            <div className='space-y-2'>
+              <Label
+                htmlFor='edit-project-name'
+                className='text-sm font-semibold text-[var(--sea-ink)]'
+              >
+                项目名称
+              </Label>
+              <Input
+                id='edit-project-name'
+                name='name'
+                defaultValue={project.name}
+                minLength={2}
+                maxLength={80}
+                className='h-11 rounded-xl border-[var(--line)] bg-white/65 px-4 text-[var(--sea-ink)] shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                autoFocus
+                required
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label
+                htmlFor='edit-project-status'
+                className='text-sm font-semibold text-[var(--sea-ink)]'
+              >
+                采集状态
+              </Label>
+              <select
+                id='edit-project-status'
+                name='status'
+                defaultValue={project.status}
+                className='border-input bg-background h-11 w-full rounded-xl border border-[var(--line)] bg-white/65 px-4 text-sm text-[var(--sea-ink)] outline-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[3px] focus-visible:ring-[var(--lagoon)]/20'
+              >
+                <option value='active'>采集中</option>
+                <option value='disabled'>已停用</option>
+              </select>
+            </div>
+            {projectError ? (
+              <Alert variant='destructive' className='rounded-xl'>
+                <AlertTitle>保存失败</AlertTitle>
+                <AlertDescription>{projectError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <DialogFooter>
+              <Button
+                type='button'
+                variant='outline'
+                disabled={savingProject}
+                onClick={() => setProjectDialogOpen(false)}
+              >
+                取消
+              </Button>
+              <Button type='submit' disabled={savingProject}>
+                {savingProject ? '保存中…' : '保存'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={policyDialogOpen}
         onOpenChange={(open) => {
           setPolicyDialogOpen(open)
@@ -265,7 +412,7 @@ function ProjectPage() {
               编辑最低支持版本
             </DialogTitle>
             <DialogDescription>
-              为已识别浏览器家族设置整数主版本阈值；未配置的家族不计入策略分母。修改后立即重算，不改写历史事件。
+              为浏览器家族设置整数主版本阈值；未配置的家族不计入策略分母。修改后立即重算，不改写历史事件。可在收到事件前预先配置。
             </DialogDescription>
           </DialogHeader>
           <form
@@ -274,7 +421,7 @@ function ProjectPage() {
             className='space-y-4'
           >
             <div className='grid gap-3 sm:grid-cols-2'>
-              {policyFamilies.map((family) => {
+              {BROWSER_FAMILIES.map((family) => {
                 const current = dashboard?.policies.find(
                   (policy) => policy.browserFamily === family,
                 )
@@ -303,11 +450,6 @@ function ProjectPage() {
                 )
               })}
             </div>
-            {policyFamilies.length === 0 ? (
-              <p className='text-muted-foreground text-sm'>
-                尚无已识别家族，收集到事件后可配置支持线。
-              </p>
-            ) : null}
             {policyError ? (
               <Alert variant='destructive'>
                 <AlertTitle>保存失败</AlertTitle>
@@ -323,7 +465,7 @@ function ProjectPage() {
               >
                 取消
               </Button>
-              <Button type='submit' disabled={savingPolicies || policyFamilies.length === 0}>
+              <Button type='submit' disabled={savingPolicies}>
                 {savingPolicies ? '保存中…' : '保存支持策略'}
               </Button>
             </DialogFooter>
@@ -393,19 +535,65 @@ function ProjectPage() {
                 允许的 Origin
               </CardTitle>
               <CardDescription>
-                请求 Origin 必须完全匹配。路径、查询参数和通配符不参与配置。
+                请求 Origin 必须完全匹配。路径、查询参数和通配符不参与配置。一行一个，最多 10 个。
               </CardDescription>
             </CardHeader>
-            <CardContent className='space-y-3'>
-              {project.origins.map((origin) => (
-                <div
-                  key={origin}
-                  className='flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/60 px-4 py-3'
-                >
-                  <code className='min-w-0 truncate border-0 bg-transparent p-0'>{origin}</code>
-                  <Badge variant='secondary'>生产/测试</Badge>
+            <CardContent>
+              <form className='space-y-4' onSubmit={submitOrigins}>
+                <div className='space-y-2'>
+                  <Label
+                    htmlFor='edit-project-origins'
+                    className='text-sm font-semibold text-[var(--sea-ink)]'
+                  >
+                    Origin 列表
+                  </Label>
+                  <Textarea
+                    id='edit-project-origins'
+                    value={originsDraft}
+                    onChange={(event) => setOriginsDraft(event.target.value)}
+                    rows={6}
+                    className='min-h-36 resize-y rounded-xl border-[var(--line)] bg-white/65 px-4 py-3 text-[var(--sea-ink)] shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                    required
+                  />
+                  <p className='rounded-lg border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-2 text-xs leading-5 text-[var(--sea-ink-soft)]'>
+                    仅接受 HTTPS；本地开发可使用 http://localhost。保存后立即生效。
+                  </p>
                 </div>
-              ))}
+                {project.origins.length > 0 ? (
+                  <div className='space-y-2'>
+                    <p className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
+                      当前生效
+                    </p>
+                    <div className='space-y-2'>
+                      {project.origins.map((origin) => (
+                        <div
+                          key={origin}
+                          className='flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/60 px-4 py-3'
+                        >
+                          <code className='min-w-0 truncate border-0 bg-transparent p-0'>
+                            {origin}
+                          </code>
+                          <Badge variant='secondary'>已生效</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {originsError ? (
+                  <Alert variant='destructive' className='rounded-xl'>
+                    <AlertTitle>保存失败</AlertTitle>
+                    <AlertDescription>{originsError}</AlertDescription>
+                  </Alert>
+                ) : null}
+                <div className='flex flex-wrap items-center gap-3'>
+                  <Button type='submit' disabled={savingOrigins}>
+                    {savingOrigins ? '保存中…' : '保存 Origin'}
+                  </Button>
+                  {originsSaved ? (
+                    <span className='text-xs text-[var(--palm)]'>已保存并立即生效</span>
+                  ) : null}
+                </div>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>

@@ -51,6 +51,36 @@ const originSchema = z
     return url.origin
   })
 
+const browserFamilyEnum = [
+  'Chrome',
+  'Edge',
+  'Firefox',
+  'Safari',
+  'Opera',
+  'Samsung Internet',
+  'Other',
+] as const
+
+const supportPolicyEntrySchema = z.object({
+  browserFamily: z.enum(browserFamilyEnum),
+  minimumSupportedMajor: z.number().int().min(1).max(999),
+})
+
+const supportPoliciesSchema = z
+  .array(supportPolicyEntrySchema)
+  .max(browserFamilyEnum.length)
+  .default([])
+  .transform((policies) => {
+    const unique = new Map<(typeof browserFamilyEnum)[number], number>()
+    for (const policy of policies) {
+      unique.set(policy.browserFamily, policy.minimumSupportedMajor)
+    }
+    return [...unique.entries()].map(([browserFamily, minimumSupportedMajor]) => ({
+      browserFamily,
+      minimumSupportedMajor,
+    }))
+  })
+
 const projectInput = z.object({
   workspaceId: z.string().uuid(),
   name: z.string().trim().min(2, '项目名称至少 2 个字').max(80),
@@ -59,6 +89,7 @@ const projectInput = z.object({
     .min(1, '至少配置一个 Origin')
     .max(10)
     .transform((origins) => [...new Set(origins)]),
+  policies: supportPoliciesSchema,
 })
 
 const projectIdInput = z.object({
@@ -187,6 +218,19 @@ export const createWorkspace = createServerFn({ method: 'POST' })
     return { id: workspace.id, name: workspace.name }
   })
 
+const updateWorkspaceInput = workspaceInput.extend({
+  workspaceId: z.string().uuid(),
+})
+
+export const updateWorkspace = createServerFn({ method: 'POST' })
+  .validator(updateWorkspaceInput)
+  .handler(async ({ data }): Promise<WorkspaceSummary> => {
+    const { workspace } = await requireWorkspaceForUser(data.workspaceId)
+    const db = getDb()
+    await db.update(workspaces).set({ name: data.name }).where(eq(workspaces.id, workspace.id))
+    return { id: workspace.id, name: data.name }
+  })
+
 export const createProject = createServerFn({ method: 'POST' })
   .validator(projectInput)
   .handler(async ({ data }): Promise<CreatedProjectCredentials> => {
@@ -221,12 +265,75 @@ export const createProject = createServerFn({ method: 'POST' })
           origin,
         }),
       ),
+      ...(data.policies.length > 0
+        ? [
+            db.insert(supportPolicies).values(
+              data.policies.map((policy) => ({
+                projectId,
+                browserFamily: policy.browserFamily,
+                minimumSupportedMajor: policy.minimumSupportedMajor,
+              })),
+            ),
+          ]
+        : []),
     ])
 
     return {
       projectId,
       queryApiKey: queryApiKey.token,
     }
+  })
+
+const updateProjectInput = z.object({
+  projectId: z.string().uuid(),
+  name: z.string().trim().min(2, '项目名称至少 2 个字').max(80),
+  status: z.enum(['active', 'disabled']).optional(),
+})
+
+export const updateProject = createServerFn({ method: 'POST' })
+  .validator(updateProjectInput)
+  .handler(async ({ data }) => {
+    const { project } = await requireProjectForUser(data.projectId)
+    const db = getDb()
+    await db
+      .update(projects)
+      .set({
+        name: data.name,
+        ...(data.status ? { status: data.status } : {}),
+      })
+      .where(eq(projects.id, project.id))
+    return {
+      id: project.id,
+      name: data.name,
+      status: data.status ?? project.status,
+    }
+  })
+
+const updateProjectOriginsInput = z.object({
+  projectId: z.string().uuid(),
+  origins: z
+    .array(originSchema)
+    .min(1, '至少配置一个 Origin')
+    .max(10)
+    .transform((origins) => [...new Set(origins)]),
+})
+
+export const updateProjectOrigins = createServerFn({ method: 'POST' })
+  .validator(updateProjectOriginsInput)
+  .handler(async ({ data }) => {
+    const { project } = await requireProjectForUser(data.projectId)
+    const db = getDb()
+
+    await db.delete(allowedOrigins).where(eq(allowedOrigins.projectId, project.id))
+    await db.insert(allowedOrigins).values(
+      data.origins.map((origin) => ({
+        id: crypto.randomUUID(),
+        projectId: project.id,
+        origin,
+      })),
+    )
+
+    return { projectId: project.id, origins: data.origins }
   })
 
 async function getOrCreateProjectCollectorKey(projectId: string) {
@@ -331,16 +438,6 @@ const timeZoneInput = z
   .max(64)
   .regex(/^[A-Za-z0-9_+\-./]+$/u)
   .default('UTC')
-
-const browserFamilyEnum = [
-  'Chrome',
-  'Edge',
-  'Firefox',
-  'Safari',
-  'Opera',
-  'Samsung Internet',
-  'Other',
-] as const
 
 const osFamilyEnum = ['Windows', 'macOS', 'iOS', 'Android', 'Linux', 'ChromeOS', 'Other'] as const
 
@@ -470,11 +567,23 @@ export interface ProjectRawEvents {
   totalPages: number
 }
 
+async function requireWorkspaceForUser(workspaceId: string) {
+  const user = await requireSessionUser()
+  const db = getDb()
+  const workspace = await db
+    .select({ id: workspaces.id, name: workspaces.name })
+    .from(workspaces)
+    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.ownerUserId, user.id)))
+    .get()
+  if (!workspace) throw new Error('工作区不存在或无权访问')
+  return { workspace, user }
+}
+
 async function requireProjectForUser(projectId: string) {
   const user = await requireSessionUser()
   const db = getDb()
   const project = await db
-    .select({ id: projects.id })
+    .select({ id: projects.id, name: projects.name, status: projects.status })
     .from(projects)
     .innerJoin(
       workspaces,
@@ -822,14 +931,7 @@ export const saveSupportPolicies = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       projectId: z.string().uuid(),
-      policies: z
-        .array(
-          z.object({
-            browserFamily: z.enum(browserFamilyEnum),
-            minimumSupportedMajor: z.number().int().min(1).max(999),
-          }),
-        )
-        .max(7),
+      policies: supportPoliciesSchema,
     }),
   )
   .handler(async ({ data }): Promise<SupportPolicyEntry[]> => {
