@@ -11,7 +11,7 @@
     {
       "binding": "DB",
       "database_name": "browser-pulse",
-      "database_id": "45086d84-d3b0-4dac-80b9-5557ecda8350",
+      "database_id": "8c336d9c-570a-4030-b29d-14893521b73a",
       "migrations_dir": "drizzle",
     },
   ],
