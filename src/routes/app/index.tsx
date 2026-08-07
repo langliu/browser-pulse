@@ -1,13 +1,5 @@
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import {
-  ArrowRight,
-  CheckCircle2,
-  FolderKanban,
-  Pencil,
-  Plus,
-  Radio,
-  ShieldCheck,
-} from 'lucide-react'
+import { ArrowRight, FolderKanban, Pencil, Plus, Radio, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { z } from 'zod'
@@ -41,7 +33,6 @@ import {
   getDashboardState,
   updateWorkspace,
 } from '#/server/dashboard.functions'
-import type { CreatedProjectCredentials } from '#/server/dashboard.functions'
 
 const dashboardSearchSchema = z.object({
   workspaceId: z.string().uuid().optional(),
@@ -74,7 +65,6 @@ function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [projectError, setProjectError] = useState<string | null>(null)
   const [workspaceEditError, setWorkspaceEditError] = useState<string | null>(null)
-  const [credentials, setCredentials] = useState<CreatedProjectCredentials | null>(null)
 
   function openCreateProject() {
     setProjectError(null)
@@ -88,7 +78,6 @@ function Dashboard() {
     const form = new FormData(event.currentTarget)
     try {
       const created = await createWorkspace({ data: { name: String(form.get('name') ?? '') } })
-      setCredentials(null)
       setCreatingWorkspace(false)
       await router.navigate({ to: '/app', search: { workspaceId: created.id } })
       await router.invalidate()
@@ -125,7 +114,6 @@ function Dashboard() {
   async function switchWorkspace(workspaceId: string) {
     setError(null)
     setProjectError(null)
-    setCredentials(null)
     setCreatingProject(false)
     setEditingWorkspace(false)
     setWorkspaceEditError(null)
@@ -136,7 +124,6 @@ function Dashboard() {
     event.preventDefault()
     setSubmitting(true)
     setProjectError(null)
-    setCredentials(null)
     const workspaceId = dashboard.workspace?.id
     if (!workspaceId) {
       setProjectError('请先选择工作区')
@@ -166,9 +153,11 @@ function Dashboard() {
           policies,
         },
       })
-      setCredentials(created)
       setCreatingProject(false)
-      await router.invalidate()
+      await router.navigate({
+        to: '/app/projects/$projectId',
+        params: { projectId: created.projectId },
+      })
     } catch (caught) {
       setProjectError(caught instanceof Error ? caught.message : '项目创建失败')
     } finally {
@@ -363,25 +352,6 @@ function Dashboard() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {credentials && (
-        <Alert className='mt-8 border-[var(--palm)]/30 bg-white/70'>
-          <CheckCircle2 className='size-4 text-[var(--palm)]' aria-hidden='true' />
-          <AlertTitle>项目已创建，查询密钥只显示这一次</AlertTitle>
-          <AlertDescription className='mt-3 space-y-3'>
-            <div>
-              <p className='mb-1 text-xs font-medium tracking-wide uppercase'>Query API Key</p>
-              <code className='block overflow-x-auto p-3 text-xs'>{credentials.queryApiKey}</code>
-            </div>
-            <Button asChild variant='outline' size='sm'>
-              <Link to='/app/projects/$projectId' params={{ projectId: credentials.projectId }}>
-                查看项目详情与接入代码
-                <ArrowRight className='size-4' aria-hidden='true' />
-              </Link>
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
 
       <Card className='mt-8 rounded-2xl border-[var(--line)] bg-[var(--surface-strong)] shadow-[0_18px_46px_rgba(23,58,64,0.08)]'>
         <CardHeader className='gap-3 px-7 pt-7'>

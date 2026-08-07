@@ -523,6 +523,24 @@ function ProjectPage() {
                   const result = await collectBrowserPulse();
                 </code>
               </div>
+              <div className='mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--chip-line)] bg-[var(--chip-bg)] px-4 py-3'>
+                <p className='text-sm text-[var(--sea-ink-soft)]'>
+                  也可在站内测试页验证采集；请先把测试页 Origin 加入白名单。
+                </p>
+                <Button asChild variant='outline' size='sm'>
+                  <Link
+                    to='/collector-test'
+                    search={{
+                      collectorOrigin: project.collectorOrigin,
+                      collectorKey: project.collectorKey,
+                    }}
+                    target='_blank'
+                    rel='noreferrer'
+                  >
+                    打开采集测试
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -609,13 +627,26 @@ function ProjectPage() {
                 此键只允许写入，不提供任何读取权限，可以安全出现在客户网页源代码中。
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className='space-y-3'>
               <div className='flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-white/60 p-4 sm:flex-row sm:items-center sm:justify-between'>
                 <code className='overflow-x-auto border-0 bg-transparent p-0 text-xs'>
                   {project.collectorKey}
                 </code>
                 <CopyButton value={project.collectorKey} />
               </div>
+              <Button asChild variant='outline' size='sm'>
+                <Link
+                  to='/collector-test'
+                  search={{
+                    collectorOrigin: project.collectorOrigin,
+                    collectorKey: project.collectorKey,
+                  }}
+                  target='_blank'
+                  rel='noreferrer'
+                >
+                  用此键打开采集测试
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

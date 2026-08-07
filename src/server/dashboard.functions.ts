@@ -9,14 +9,13 @@ import {
   collectorKeys,
   dailyAggregates,
   projects,
-  queryApiKeys,
   rawEvents,
   supportPolicies,
   workspaces,
 } from '#/db/schema'
 import { getAuthConfiguration } from '#/lib/auth'
 import { monthBucketStart, recentDaysRange, weekBucketStart } from '#/lib/date'
-import { createCollectorKey, createQueryApiKey, reconstructCollectorKey } from '#/lib/keys.server'
+import { createCollectorKey, reconstructCollectorKey } from '#/lib/keys.server'
 import { getSessionUser, requireSessionUser } from '#/lib/session.server'
 
 const workspaceInput = z.object({
@@ -125,9 +124,8 @@ export interface DashboardState {
   projects: DashboardProject[]
 }
 
-export interface CreatedProjectCredentials {
+export interface CreatedProject {
   projectId: string
-  queryApiKey: string
 }
 
 export interface ProjectDetail {
@@ -233,7 +231,7 @@ export const updateWorkspace = createServerFn({ method: 'POST' })
 
 export const createProject = createServerFn({ method: 'POST' })
   .validator(projectInput)
-  .handler(async ({ data }): Promise<CreatedProjectCredentials> => {
+  .handler(async ({ data }): Promise<CreatedProject> => {
     const user = await requireSessionUser()
     const db = getDb()
     const workspace = await db
@@ -244,19 +242,12 @@ export const createProject = createServerFn({ method: 'POST' })
     if (!workspace) throw new Error('工作区不存在或无权访问')
 
     const projectId = crypto.randomUUID()
-    const queryApiKey = await createQueryApiKey()
 
     await db.batch([
       db.insert(projects).values({
         id: projectId,
         workspaceId: workspace.id,
         name: data.name,
-      }),
-      db.insert(queryApiKeys).values({
-        id: crypto.randomUUID(),
-        projectId,
-        keyDigest: queryApiKey.digest,
-        keyPrefix: queryApiKey.prefix,
       }),
       ...data.origins.map((origin) =>
         db.insert(allowedOrigins).values({
@@ -278,10 +269,7 @@ export const createProject = createServerFn({ method: 'POST' })
         : []),
     ])
 
-    return {
-      projectId,
-      queryApiKey: queryApiKey.token,
-    }
+    return { projectId }
   })
 
 const updateProjectInput = z.object({
@@ -351,14 +339,15 @@ async function getOrCreateProjectCollectorKey(projectId: string) {
 
   const generated = await createCollectorKey()
   await db.run(sql`
-    INSERT INTO collector_keys (id, project_id, public_id, version, name, status)
+    INSERT INTO collector_keys (id, project_id, public_id, version, name, status, created_at)
     SELECT
       ${crypto.randomUUID()},
       ${projectId},
       ${generated.publicId},
       ${generated.version},
       '默认采集键',
-      'active'
+      'active',
+      ${Date.now()}
     WHERE NOT EXISTS (
       SELECT 1
       FROM collector_keys

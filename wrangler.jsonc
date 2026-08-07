@@ -7,6 +7,12 @@
   "observability": {
     "enabled": false,
   },
+  "routes": [
+    {
+      "pattern": "browser-pulse.langliu.top",
+      "custom_domain": true,
+    },
+  ],
   "d1_databases": [
     {
       "binding": "DB",

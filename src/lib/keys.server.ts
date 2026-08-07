@@ -14,12 +14,6 @@ export interface VerifiedCollectorKey {
   version: number
 }
 
-export interface QueryApiKeyMaterial {
-  token: string
-  digest: string
-  prefix: string
-}
-
 let hmacKeyPromise: Promise<CryptoKey> | undefined
 
 function encodeBase64Url(bytes: Uint8Array) {
@@ -91,21 +85,4 @@ export async function verifyCollectorKey(token: string): Promise<VerifiedCollect
   if (!valid) return null
 
   return { publicId, version }
-}
-
-export async function digestApiKey(token: string) {
-  if (!env.KEY_PEPPER.trim()) {
-    throw new Error('KEY_PEPPER 未配置')
-  }
-  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(`${env.KEY_PEPPER}:${token}`))
-  return encodeBase64Url(new Uint8Array(digest))
-}
-
-export async function createQueryApiKey(): Promise<QueryApiKeyMaterial> {
-  const token = `bpq_live_${randomBase64Url(32)}`
-  return {
-    token,
-    digest: await digestApiKey(token),
-    prefix: token.slice(0, 17),
-  }
 }

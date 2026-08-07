@@ -155,28 +155,6 @@ export const collectorKeys = sqliteTable(
   ],
 )
 
-export const queryApiKeys = sqliteTable(
-  'query_api_keys',
-  {
-    id: text('id').primaryKey(),
-    projectId: text('project_id')
-      .notNull()
-      .references(() => projects.id, { onDelete: 'cascade' }),
-    name: text('name').default('默认查询键').notNull(),
-    keyDigest: text('key_digest').notNull().unique(),
-    keyPrefix: text('key_prefix').notNull(),
-    status: text('status', { enum: ['active', 'revoked'] })
-      .default('active')
-      .notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
-    revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
-  },
-  (table) => [index('query_api_keys_project_id_idx').on(table.projectId)],
-)
-
 export const supportPolicies = sqliteTable(
   'support_policies',
   {
@@ -259,7 +237,6 @@ export const projectRelations = relations(projects, ({ one, many }) => ({
   }),
   origins: many(allowedOrigins),
   collectorKeys: many(collectorKeys),
-  queryApiKeys: many(queryApiKeys),
 }))
 
 export const schema = {
@@ -271,7 +248,6 @@ export const schema = {
   projects,
   allowedOrigins,
   collectorKeys,
-  queryApiKeys,
   supportPolicies,
   rawEvents,
   dailyAggregates,

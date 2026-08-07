@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as CollectorTestRouteImport } from './routes/collector-test'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/app/projects/$projectId'
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectorTestRoute = CollectorTestRouteImport.update({
+  id: '/collector-test',
+  path: '/collector-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -72,6 +78,7 @@ const AppProjectsProjectIdEventsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/collector-test': typeof CollectorTestRoute
   '/app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteWithChildren
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/collector-test': typeof CollectorTestRoute
   '/app': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/v1/browser-events/$collectorKey': typeof V1BrowserEventsCollectorKeyRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/collector-test': typeof CollectorTestRoute
   '/app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteWithChildren
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/collector-test'
     | '/app/'
     | '/api/auth/$'
     | '/app/projects/$projectId'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/collector-test'
     | '/app'
     | '/api/auth/$'
     | '/v1/browser-events/$collectorKey'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/collector-test'
     | '/app/'
     | '/api/auth/$'
     | '/app/projects/$projectId'
@@ -138,6 +150,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  CollectorTestRoute: typeof CollectorTestRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   V1BrowserEventsCollectorKeyRoute: typeof V1BrowserEventsCollectorKeyRoute
 }
@@ -156,6 +169,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collector-test': {
+      id: '/collector-test'
+      path: '/collector-test'
+      fullPath: '/collector-test'
+      preLoaderRoute: typeof CollectorTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/': {
@@ -240,6 +260,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  CollectorTestRoute: CollectorTestRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   V1BrowserEventsCollectorKeyRoute: V1BrowserEventsCollectorKeyRoute,
 }

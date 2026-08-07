@@ -44,8 +44,7 @@ pnpm deploy              # 构建 + wrangler deploy
 ### 密钥体系
 
 - `collectorKey`：公开、写入专用（示例 `bpc_live_...`），HMAC 签名由 `KEY_PEPPER` 生成（`src/lib/keys.server.ts`）。可出现在客户网页中，无读取权限。
-- `queryApiKey`：服务端只读密钥，只在创建时显示一次明文，库中只存 SHA-256 摘要（`key_digest`），不得出现在浏览器代码中。
-- `KEY_PEPPER` 变更会使存量密钥全部失效；`BETTER_AUTH_SECRET` 变更会使存量会话失效。
+- `KEY_PEPPER` 变更会使存量采集键全部失效；`BETTER_AUTH_SECRET` 变更会使存量会话失效。
 
 ### 业务规则
 

@@ -7,7 +7,7 @@
 ## 功能
 
 - **Google 登录**（Better Auth）：一个登录账号对应一个工作区；Google OAuth 令牌不落库，会话只存 D1。
-- **项目与接入**：工作区下创建多个项目，每个项目配置允许的 Origin；项目详情页提供公开写入专用 `collectorKey`，创建完成时一次性展示服务端 `queryApiKey`。
+- **项目与接入**：工作区下创建多个项目，每个项目配置允许的 Origin；项目详情页提供公开写入专用 `collectorKey` 与内联接入代码。
 - **内联采集片段**：无 npm 包、无远程 SDK，复制一段 `<script>` 并在站点同意流程后显式调用 `collectBrowserPulse()`；同一页面只发送一次。
 - **看板**：浏览器版本分布（占比前 5 + 未知单列）、事件趋势（日/周/月）、最低支持版本策略配置与低于支持线占比实时重算；支持按操作系统、设备类型、时间范围筛选。
 - **聚合存储**：事件按 UTC 自然日分桶写入每日聚合；看板按客户端当前时区计算筛选窗口；原始事件保留 30 天、每日聚合保留 13 个月。
@@ -84,7 +84,7 @@ src/
 │   └── dashboard.functions.ts  # Server Functions（工作区/项目/看板/策略）
 ├── lib/
 │   ├── auth.ts              # Better Auth 配置
-│   ├── keys.server.ts       # collectorKey / queryApiKey 生成与校验
+│   ├── keys.server.ts       # collectorKey 生成与校验
 │   └── collector-snippet.ts # 内联采集片段生成
 ├── ingest/                  # 队列消费、幂等写入与每日聚合
 ├── db/                      # Drizzle schema
