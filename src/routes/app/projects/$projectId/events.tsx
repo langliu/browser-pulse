@@ -104,7 +104,7 @@ function ProjectEventsPage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setLoadError(caught instanceof Error ? caught.message : '实时数据加载失败')
+          setLoadError(caught instanceof Error ? caught.message : '最近事件加载失败')
         }
       })
       .finally(() => {
@@ -172,16 +172,17 @@ function ProjectEventsPage() {
           </Badge>
         </div>
         <h1 className='font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
-          {project.name} · 实时数据
+          {project.name} · 最近事件（调试）
         </h1>
         <p className='mt-2 max-w-2xl text-[var(--sea-ink-soft)]'>
-          查看近 30 天内的单条采集事件（raw_events）。不包含访客标识、IP、URL 或原始 User-Agent。
+          仅供接入排障：查看保留期内最近原始事件是否到达。这是页面加载样本，不是访客/用户列表；不包含
+          IP、URL、原始 User-Agent 或任何稳定标识，也不支持导出。
         </p>
       </div>
 
       {loadError && !events ? (
         <Alert variant='destructive'>
-          <AlertTitle>实时数据加载失败</AlertTitle>
+          <AlertTitle>最近事件加载失败</AlertTitle>
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       ) : (
@@ -191,7 +192,7 @@ function ProjectEventsPage() {
               <div>
                 <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
                   <Radio className='size-5' aria-hidden='true' />
-                  原始事件流
+                  最近原始事件
                 </CardTitle>
                 <CardDescription className='mt-2'>
                   {rangeLabel} · 按接收时间倒序 · 超过 30 天的事件会被清理
@@ -204,7 +205,7 @@ function ProjectEventsPage() {
                   size='icon-sm'
                   disabled={loading}
                   onClick={() => setRefreshKey((current) => current + 1)}
-                  aria-label='刷新实时数据'
+                  aria-label='刷新最近事件'
                   title='刷新'
                   className='size-7 rounded-full text-[var(--sea-ink-soft)] hover:bg-white/80 hover:text-[var(--sea-ink)] disabled:opacity-60'
                 >
@@ -228,7 +229,7 @@ function ProjectEventsPage() {
           <CardContent className='space-y-5'>
             {loadError ? (
               <Alert variant='destructive'>
-                <AlertTitle>实时数据加载失败</AlertTitle>
+                <AlertTitle>最近事件加载失败</AlertTitle>
                 <AlertDescription>{loadError}</AlertDescription>
               </Alert>
             ) : null}
@@ -268,7 +269,7 @@ function ProjectEventsPage() {
             {!events ? (
               <div className='text-muted-foreground flex items-center justify-center gap-3 px-5 py-16'>
                 <Loader2 className='size-5 animate-spin' aria-hidden='true' />
-                正在加载实时数据…
+                正在加载最近事件…
               </div>
             ) : events.rows.length === 0 ? (
               <div className='rounded-xl border border-dashed border-[var(--line)] bg-white/40 px-6 py-16 text-center'>

@@ -36,6 +36,13 @@
       "when": 1786121334894,
       "tag": "0004_spicy_shaman",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786166985903,
+      "tag": "0005_sturdy_shen",
+      "breakpoints": true
     }
   ]
 }

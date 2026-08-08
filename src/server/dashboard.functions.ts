@@ -98,7 +98,11 @@ const projectIdInput = z.object({
 export interface WorkspaceSummary {
   id: string
   name: string
+  projectCount: number
 }
+
+const MAX_WORKSPACES_PER_USER = 20
+const MAX_PROJECTS_PER_WORKSPACE = 50
 export interface ViewerState {
   authConfigured: boolean
   missingAuthConfiguration: string[]
@@ -172,12 +176,28 @@ export const getDashboardState = createServerFn({ method: 'GET' })
       .from(workspaces)
       .where(eq(workspaces.ownerUserId, user.id))
       .orderBy(asc(workspaces.createdAt), asc(workspaces.id))
-    const workspace =
-      workspacesRows.find((candidate) => candidate.id === data.workspaceId) ??
-      workspacesRows[0] ??
-      null
 
-    if (!workspace) return { workspaces: workspacesRows, workspace: null, projects: [] }
+    const ownedProjectRows = await db
+      .select({ workspaceId: projects.workspaceId })
+      .from(projects)
+      .innerJoin(workspaces, eq(projects.workspaceId, workspaces.id))
+      .where(eq(workspaces.ownerUserId, user.id))
+
+    const countByWorkspace = new Map<string, number>()
+    for (const row of ownedProjectRows) {
+      countByWorkspace.set(row.workspaceId, (countByWorkspace.get(row.workspaceId) ?? 0) + 1)
+    }
+
+    const summaries: WorkspaceSummary[] = workspacesRows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      projectCount: countByWorkspace.get(row.id) ?? 0,
+    }))
+
+    const workspace =
+      summaries.find((candidate) => candidate.id === data.workspaceId) ?? summaries[0] ?? null
+
+    if (!workspace) return { workspaces: summaries, workspace: null, projects: [] }
 
     const rows = await db
       .select({
@@ -192,7 +212,7 @@ export const getDashboardState = createServerFn({ method: 'GET' })
       .orderBy(desc(projects.createdAt))
 
     return {
-      workspaces: workspacesRows,
+      workspaces: summaries,
       workspace,
       projects: rows.map((project) => ({
         ...project,
@@ -204,16 +224,25 @@ export const getDashboardState = createServerFn({ method: 'GET' })
 
 export const createWorkspace = createServerFn({ method: 'POST' })
   .validator(workspaceInput)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<WorkspaceSummary> => {
     const user = await requireSessionUser()
     const db = getDb()
+    const existingCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(workspaces)
+      .where(eq(workspaces.ownerUserId, user.id))
+      .get()
+    if (Number(existingCount?.count ?? 0) >= MAX_WORKSPACES_PER_USER) {
+      throw new Error(`每个账号最多创建 ${MAX_WORKSPACES_PER_USER} 个工作区`)
+    }
+
     const workspace = {
       id: crypto.randomUUID(),
       ownerUserId: user.id,
       name: data.name,
     }
     await db.insert(workspaces).values(workspace)
-    return { id: workspace.id, name: workspace.name }
+    return { id: workspace.id, name: workspace.name, projectCount: 0 }
   })
 
 const updateWorkspaceInput = workspaceInput.extend({
@@ -226,7 +255,45 @@ export const updateWorkspace = createServerFn({ method: 'POST' })
     const { workspace } = await requireWorkspaceForUser(data.workspaceId)
     const db = getDb()
     await db.update(workspaces).set({ name: data.name }).where(eq(workspaces.id, workspace.id))
-    return { id: workspace.id, name: data.name }
+    const countRow = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(projects)
+      .where(eq(projects.workspaceId, workspace.id))
+      .get()
+    return {
+      id: workspace.id,
+      name: data.name,
+      projectCount: Number(countRow?.count ?? 0),
+    }
+  })
+
+const deleteWorkspaceInput = z.object({
+  workspaceId: z.string().uuid(),
+  confirmName: z.string().trim().min(1, '请输入工作区名称以确认删除'),
+})
+
+export const deleteWorkspace = createServerFn({ method: 'POST' })
+  .validator(deleteWorkspaceInput)
+  .handler(async ({ data }) => {
+    const { workspace, user } = await requireWorkspaceForUser(data.workspaceId)
+    if (data.confirmName !== workspace.name) {
+      throw new Error('确认名称与工作区名称不一致')
+    }
+
+    const db = getDb()
+    await db.delete(workspaces).where(eq(workspaces.id, workspace.id))
+
+    const next = await db
+      .select({ id: workspaces.id, name: workspaces.name })
+      .from(workspaces)
+      .where(eq(workspaces.ownerUserId, user.id))
+      .orderBy(asc(workspaces.createdAt), asc(workspaces.id))
+      .get()
+
+    return {
+      deletedWorkspaceId: workspace.id,
+      nextWorkspaceId: next?.id ?? null,
+    }
   })
 
 export const createProject = createServerFn({ method: 'POST' })
@@ -240,6 +307,15 @@ export const createProject = createServerFn({ method: 'POST' })
       .where(and(eq(workspaces.id, data.workspaceId), eq(workspaces.ownerUserId, user.id)))
       .get()
     if (!workspace) throw new Error('工作区不存在或无权访问')
+
+    const projectCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(projects)
+      .where(eq(projects.workspaceId, workspace.id))
+      .get()
+    if (Number(projectCount?.count ?? 0) >= MAX_PROJECTS_PER_WORKSPACE) {
+      throw new Error(`每个工作区最多创建 ${MAX_PROJECTS_PER_WORKSPACE} 个项目`)
+    }
 
     const projectId = crypto.randomUUID()
 
@@ -297,6 +373,58 @@ export const updateProject = createServerFn({ method: 'POST' })
     }
   })
 
+const deleteProjectInput = z.object({
+  projectId: z.string().uuid(),
+  confirmName: z.string().trim().min(1, '请输入项目名称以确认删除'),
+})
+
+export const deleteProject = createServerFn({ method: 'POST' })
+  .validator(deleteProjectInput)
+  .handler(async ({ data }) => {
+    const { project } = await requireProjectForUser(data.projectId)
+    if (data.confirmName !== project.name) {
+      throw new Error('确认名称与项目名称不一致')
+    }
+
+    const db = getDb()
+    // Cascade removes origins, keys, policies, raw events and aggregates.
+    await db.delete(projects).where(eq(projects.id, project.id))
+    return {
+      deletedProjectId: project.id,
+      workspaceId: project.workspaceId,
+    }
+  })
+
+export const rotateCollectorKey = createServerFn({ method: 'POST' })
+  .validator(projectIdInput)
+  .handler(async ({ data }) => {
+    const { project } = await requireProjectForUser(data.projectId)
+    const db = getDb()
+    const now = Date.now()
+    const generated = await createCollectorKey()
+
+    await db.batch([
+      db
+        .update(collectorKeys)
+        .set({ status: 'revoked', revokedAt: new Date(now) })
+        .where(and(eq(collectorKeys.projectId, project.id), eq(collectorKeys.status, 'active'))),
+      db.insert(collectorKeys).values({
+        id: crypto.randomUUID(),
+        projectId: project.id,
+        publicId: generated.publicId,
+        version: generated.version,
+        name: '默认采集键',
+        status: 'active',
+        createdAt: new Date(now),
+      }),
+    ])
+
+    return {
+      projectId: project.id,
+      collectorKey: generated.token,
+    }
+  })
+
 const updateProjectOriginsInput = z.object({
   projectId: z.string().uuid(),
   origins: z
@@ -322,6 +450,46 @@ export const updateProjectOrigins = createServerFn({ method: 'POST' })
     )
 
     return { projectId: project.id, origins: data.origins }
+  })
+
+const addProjectOriginInput = z.object({
+  projectId: z.string().uuid(),
+  origin: originSchema,
+})
+
+export const addProjectOrigin = createServerFn({ method: 'POST' })
+  .validator(addProjectOriginInput)
+  .handler(async ({ data }) => {
+    const { project } = await requireProjectForUser(data.projectId)
+    const db = getDb()
+
+    const existing = await db
+      .select({ origin: allowedOrigins.origin })
+      .from(allowedOrigins)
+      .where(eq(allowedOrigins.projectId, project.id))
+      .orderBy(allowedOrigins.origin)
+
+    if (existing.some((row) => row.origin === data.origin)) {
+      return {
+        projectId: project.id,
+        origins: existing.map((row) => row.origin),
+        added: false as const,
+      }
+    }
+    if (existing.length >= 10) {
+      throw new Error('每个项目最多配置 10 个 Origin')
+    }
+
+    await db.insert(allowedOrigins).values({
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      origin: data.origin,
+    })
+
+    const origins = [...existing.map((row) => row.origin), data.origin].sort((a, b) =>
+      a.localeCompare(b),
+    )
+    return { projectId: project.id, origins, added: true as const }
   })
 
 async function getOrCreateProjectCollectorKey(projectId: string) {
@@ -503,9 +671,12 @@ export interface ProjectDashboard {
   identifiableRate: number
   policyCoverageRate: number
   unknownRate: number
+  uaChRate: number
+  userAgentFallbackRate: number
   distribution: DashboardDistributionItem[]
   trend: DashboardTrendPoint[]
   policies: SupportPolicyEntry[]
+  suggestedPolicies: SupportPolicyEntry[]
   unknownDetectionEvents: number
   availableOsFamilies: string[]
   availableDeviceClasses: string[]
@@ -572,7 +743,12 @@ async function requireProjectForUser(projectId: string) {
   const user = await requireSessionUser()
   const db = getDb()
   const project = await db
-    .select({ id: projects.id, name: projects.name, status: projects.status })
+    .select({
+      id: projects.id,
+      name: projects.name,
+      status: projects.status,
+      workspaceId: projects.workspaceId,
+    })
     .from(projects)
     .innerJoin(
       workspaces,
@@ -607,6 +783,7 @@ export const getProjectDashboard = createServerFn({ method: 'GET' })
           browserMajor: dailyAggregates.browserMajor,
           osFamily: dailyAggregates.osFamily,
           deviceClass: dailyAggregates.deviceClass,
+          detectionSource: dailyAggregates.detectionSource,
           eventCount: dailyAggregates.eventCount,
         })
         .from(dailyAggregates)
@@ -630,10 +807,13 @@ export const getProjectDashboard = createServerFn({ method: 'GET' })
     let policyEligibleEvents = 0
     let belowSupportEvents = 0
     let unknownDetectionEvents = 0
+    let uaChEvents = 0
+    let userAgentFallbackEvents = 0
     const distributionMap = new Map<string, DashboardDistributionItem>()
     const trendMap = new Map<string, DashboardTrendPoint>()
     const osFamilyCounts = new Map<string, number>()
     const deviceClassCounts = new Map<string, number>()
+    const familyMajorCounts = new Map<string, Map<number, number>>()
 
     for (const row of rows) {
       const count = Number(row.eventCount)
@@ -653,6 +833,9 @@ export const getProjectDashboard = createServerFn({ method: 'GET' })
       }
       totalEvents += count
 
+      if (row.detectionSource === 'ua_ch') uaChEvents += count
+      else if (row.detectionSource === 'user_agent_fallback') userAgentFallbackEvents += count
+
       const major = row.browserMajor || null
       const family = row.browserFamily
       const identifiable = family !== 'Unknown' && major !== null && major !== ''
@@ -660,6 +843,15 @@ export const getProjectDashboard = createServerFn({ method: 'GET' })
 
       const isUnknown = family === 'Unknown' || major === null || major === ''
       if (isUnknown) unknownDetectionEvents += count
+
+      if (identifiable) {
+        const majorNumber = Number(major)
+        if (Number.isInteger(majorNumber) && majorNumber > 0) {
+          const majorMap = familyMajorCounts.get(family) ?? new Map<number, number>()
+          majorMap.set(majorNumber, (majorMap.get(majorNumber) ?? 0) + count)
+          familyMajorCounts.set(family, majorMap)
+        }
+      }
 
       const minimumSupportedMajor = policies.get(family) ?? null
       let status: DashboardDistributionItem['status'] = 'unknown'
@@ -738,6 +930,27 @@ export const getProjectDashboard = createServerFn({ method: 'GET' })
             : null,
       }))
 
+    const suggestedPolicies: SupportPolicyEntry[] = []
+    for (const [family, majorMap] of familyMajorCounts) {
+      const totalFamilyEvents = [...majorMap.values()].reduce((sum, value) => sum + value, 0)
+      if (totalFamilyEvents < 20) continue
+      const sortedMajors = [...majorMap.entries()].sort((a, b) => b[0] - a[0])
+      let covered = 0
+      let suggested: number | null = null
+      for (const [majorNumber, count] of sortedMajors) {
+        covered += count
+        suggested = majorNumber
+        if (covered / totalFamilyEvents >= 0.95) break
+      }
+      if (suggested !== null) {
+        suggestedPolicies.push({
+          browserFamily: family,
+          minimumSupportedMajor: suggested,
+        })
+      }
+    }
+    suggestedPolicies.sort((a, b) => a.browserFamily.localeCompare(b.browserFamily))
+
     return {
       projectId: project.id,
       timeZone,
@@ -751,12 +964,15 @@ export const getProjectDashboard = createServerFn({ method: 'GET' })
       identifiableRate: totalEvents > 0 ? identifiableEvents / totalEvents : 0,
       policyCoverageRate: totalEvents > 0 ? policyEligibleEvents / totalEvents : 0,
       unknownRate: totalEvents > 0 ? unknownDetectionEvents / totalEvents : 0,
+      uaChRate: totalEvents > 0 ? uaChEvents / totalEvents : 0,
+      userAgentFallbackRate: totalEvents > 0 ? userAgentFallbackEvents / totalEvents : 0,
       distribution,
       trend,
       policies: policyRows.map((policy) => ({
         browserFamily: policy.browserFamily,
         minimumSupportedMajor: policy.minimumSupportedMajor,
       })),
+      suggestedPolicies,
       unknownDetectionEvents,
       availableOsFamilies: [...osFamilyCounts.entries()]
         .sort((a, b) => b[1] - a[1])

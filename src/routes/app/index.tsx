@@ -1,6 +1,6 @@
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
-import { ArrowRight, FolderKanban, Pencil, Plus, Radio, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowRight, FolderKanban, Pencil, Plus, Radio, ShieldCheck, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { z } from 'zod'
 
@@ -30,6 +30,7 @@ import { Textarea } from '#/components/ui/textarea'
 import {
   createProject,
   createWorkspace,
+  deleteWorkspace,
   getDashboardState,
   updateWorkspace,
 } from '#/server/dashboard.functions'
@@ -55,16 +56,46 @@ export const Route = createFileRoute('/app/')({
   component: Dashboard,
 })
 
+const LAST_WORKSPACE_KEY = 'browser-pulse:last-workspace-id'
+
 function Dashboard() {
   const dashboard = Route.useLoaderData()
+  const search = Route.useSearch()
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [creatingWorkspace, setCreatingWorkspace] = useState(false)
   const [creatingProject, setCreatingProject] = useState(false)
   const [editingWorkspace, setEditingWorkspace] = useState(false)
+  const [deletingWorkspace, setDeletingWorkspace] = useState(false)
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [projectError, setProjectError] = useState<string | null>(null)
   const [workspaceEditError, setWorkspaceEditError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (search.workspaceId || !dashboard.workspace) return
+    try {
+      const remembered = localStorage.getItem(LAST_WORKSPACE_KEY)
+      if (
+        remembered &&
+        dashboard.workspaces.some((workspace) => workspace.id === remembered) &&
+        remembered !== dashboard.workspace.id
+      ) {
+        void router.navigate({ to: '/app', search: { workspaceId: remembered } })
+      }
+    } catch {
+      // ignore storage failures
+    }
+  }, [dashboard.workspace, dashboard.workspaces, router, search.workspaceId])
+
+  useEffect(() => {
+    if (!dashboard.workspace) return
+    try {
+      localStorage.setItem(LAST_WORKSPACE_KEY, dashboard.workspace.id)
+    } catch {
+      // ignore storage failures
+    }
+  }, [dashboard.workspace])
 
   function openCreateProject() {
     setProjectError(null)
@@ -103,9 +134,40 @@ function Dashboard() {
         },
       })
       setEditingWorkspace(false)
+      setDeletingWorkspace(false)
+      setDeleteConfirmName('')
       await router.invalidate()
     } catch (caught) {
       setWorkspaceEditError(caught instanceof Error ? caught.message : '工作区更新失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function submitWorkspaceDelete(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const workspaceId = dashboard.workspace?.id
+    if (!workspaceId) return
+    setSubmitting(true)
+    setWorkspaceEditError(null)
+    try {
+      const result = await deleteWorkspace({
+        data: {
+          workspaceId,
+          confirmName: deleteConfirmName.trim(),
+        },
+      })
+      setEditingWorkspace(false)
+      setDeletingWorkspace(false)
+      setDeleteConfirmName('')
+      if (result.nextWorkspaceId) {
+        await router.navigate({ to: '/app', search: { workspaceId: result.nextWorkspaceId } })
+      } else {
+        await router.navigate({ to: '/app', search: {} })
+      }
+      await router.invalidate()
+    } catch (caught) {
+      setWorkspaceEditError(caught instanceof Error ? caught.message : '工作区删除失败')
     } finally {
       setSubmitting(false)
     }
@@ -116,7 +178,14 @@ function Dashboard() {
     setProjectError(null)
     setCreatingProject(false)
     setEditingWorkspace(false)
+    setDeletingWorkspace(false)
+    setDeleteConfirmName('')
     setWorkspaceEditError(null)
+    try {
+      localStorage.setItem(LAST_WORKSPACE_KEY, workspaceId)
+    } catch {
+      // ignore
+    }
     await router.navigate({ to: '/app', search: { workspaceId } })
   }
 
@@ -206,6 +275,9 @@ function Dashboard() {
                 {dashboard.workspaces.map((workspace) => (
                   <SelectItem key={workspace.id} value={workspace.id}>
                     {workspace.name}
+                    <span className='text-muted-foreground ml-2 text-xs'>
+                      {workspace.projectCount} 项目
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -225,15 +297,17 @@ function Dashboard() {
               className='h-8 rounded-full border-[var(--chip-line)] bg-[var(--surface-strong)] px-3 text-[var(--sea-ink)]'
               onClick={() => {
                 setWorkspaceEditError(null)
+                setDeletingWorkspace(false)
+                setDeleteConfirmName('')
                 setEditingWorkspace(true)
               }}
             >
               <Pencil className='size-3.5' aria-hidden='true' />
-              编辑
+              工作区设置
             </Button>
           </div>
           <p className='mt-3 max-w-2xl text-base leading-7 text-[var(--sea-ink-soft)]'>
-            创建项目，配置允许采集的 Origin，然后复制内联代码。
+            工作区彼此隔离。可在此创建项目、配置 Origin，再复制内联采集代码。
           </p>
         </div>
         <div className='flex flex-wrap items-center gap-3 sm:pb-1'>
@@ -248,6 +322,9 @@ function Dashboard() {
           >
             <Plus className='size-4' aria-hidden='true' />
             新建工作区
+            <span className='text-muted-foreground ml-1 text-xs font-normal'>
+              {dashboard.workspaces.length}/20
+            </span>
           </Button>
           <Button
             type='button'
@@ -256,6 +333,9 @@ function Dashboard() {
           >
             <Plus className='size-4' aria-hidden='true' />
             新建项目
+            <span className='ml-1 text-xs font-normal text-white/70'>
+              {dashboard.projects.length}/50
+            </span>
           </Button>
           <Card className='min-w-40 rounded-2xl border-[var(--line)] bg-[var(--surface-strong)] py-4 shadow-[0_14px_30px_rgba(23,58,64,0.08)]'>
             <CardContent className='flex items-center gap-3 px-4'>
@@ -303,53 +383,134 @@ function Dashboard() {
         open={editingWorkspace}
         onOpenChange={(open) => {
           setEditingWorkspace(open)
-          if (!open) setWorkspaceEditError(null)
+          if (!open) {
+            setWorkspaceEditError(null)
+            setDeletingWorkspace(false)
+            setDeleteConfirmName('')
+          }
         }}
       >
         <DialogContent className='max-w-md'>
           <DialogHeader>
-            <DialogTitle>编辑工作区</DialogTitle>
-            <DialogDescription>修改当前工作区名称。名称仅用于控制台展示。</DialogDescription>
+            <DialogTitle>工作区设置</DialogTitle>
+            <DialogDescription>
+              管理当前工作区名称。删除将级联清除其下全部项目、Origin、采集键与统计数据，且不可恢复。
+            </DialogDescription>
           </DialogHeader>
-          <form key={dashboard.workspace.id} className='space-y-4' onSubmit={submitWorkspaceEdit}>
-            <div className='space-y-2'>
-              <Label
-                htmlFor='edit-workspace-name'
-                className='text-sm font-semibold text-[var(--sea-ink)]'
-              >
-                工作区名称
-              </Label>
-              <Input
-                id='edit-workspace-name'
-                name='name'
-                defaultValue={dashboard.workspace.name}
-                minLength={2}
-                maxLength={60}
-                className='h-11 rounded-xl border-[var(--line)] bg-white/65 px-4 text-[var(--sea-ink)] shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
-                autoFocus
-                required
-              />
-            </div>
-            {workspaceEditError && (
+          {!deletingWorkspace ? (
+            <form key={dashboard.workspace.id} className='space-y-4' onSubmit={submitWorkspaceEdit}>
+              <div className='space-y-2'>
+                <Label
+                  htmlFor='edit-workspace-name'
+                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                >
+                  工作区名称
+                </Label>
+                <Input
+                  id='edit-workspace-name'
+                  name='name'
+                  defaultValue={dashboard.workspace.name}
+                  minLength={2}
+                  maxLength={60}
+                  className='h-11 rounded-xl border-[var(--line)] bg-white/65 px-4 text-[var(--sea-ink)] shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                  autoFocus
+                  required
+                />
+                <p className='text-muted-foreground text-xs'>
+                  当前包含 {dashboard.workspace.projectCount} 个项目 · 账号最多 20 个工作区
+                </p>
+              </div>
+              {workspaceEditError && (
+                <Alert variant='destructive' className='rounded-xl'>
+                  <AlertTitle>操作失败</AlertTitle>
+                  <AlertDescription>{workspaceEditError}</AlertDescription>
+                </Alert>
+              )}
+              <DialogFooter className='sm:justify-between'>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  className='text-destructive hover:text-destructive'
+                  disabled={submitting}
+                  onClick={() => {
+                    setWorkspaceEditError(null)
+                    setDeleteConfirmName('')
+                    setDeletingWorkspace(true)
+                  }}
+                >
+                  <Trash2 className='size-4' aria-hidden='true' />
+                  删除工作区
+                </Button>
+                <div className='flex flex-col-reverse gap-2 sm:flex-row'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    disabled={submitting}
+                    onClick={() => setEditingWorkspace(false)}
+                  >
+                    取消
+                  </Button>
+                  <Button type='submit' disabled={submitting}>
+                    {submitting ? '保存中…' : '保存'}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </form>
+          ) : (
+            <form className='space-y-4' onSubmit={submitWorkspaceDelete}>
               <Alert variant='destructive' className='rounded-xl'>
-                <AlertTitle>保存失败</AlertTitle>
-                <AlertDescription>{workspaceEditError}</AlertDescription>
+                <AlertTitle>确认删除工作区</AlertTitle>
+                <AlertDescription>
+                  将永久删除「{dashboard.workspace.name}」及其下 {dashboard.workspace.projectCount}{' '}
+                  个项目的全部数据（采集事件、聚合、Origin、采集键、支持策略）。此操作不可撤销。
+                </AlertDescription>
               </Alert>
-            )}
-            <DialogFooter>
-              <Button
-                type='button'
-                variant='outline'
-                disabled={submitting}
-                onClick={() => setEditingWorkspace(false)}
-              >
-                取消
-              </Button>
-              <Button type='submit' disabled={submitting}>
-                {submitting ? '保存中…' : '保存'}
-              </Button>
-            </DialogFooter>
-          </form>
+              <div className='space-y-2'>
+                <Label
+                  htmlFor='delete-workspace-confirm'
+                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                >
+                  输入工作区名称 <code>{dashboard.workspace.name}</code> 以确认
+                </Label>
+                <Input
+                  id='delete-workspace-confirm'
+                  value={deleteConfirmName}
+                  onChange={(event) => setDeleteConfirmName(event.target.value)}
+                  autoFocus
+                  autoComplete='off'
+                  className='h-11 rounded-xl'
+                  required
+                />
+              </div>
+              {workspaceEditError && (
+                <Alert variant='destructive' className='rounded-xl'>
+                  <AlertTitle>删除失败</AlertTitle>
+                  <AlertDescription>{workspaceEditError}</AlertDescription>
+                </Alert>
+              )}
+              <DialogFooter>
+                <Button
+                  type='button'
+                  variant='outline'
+                  disabled={submitting}
+                  onClick={() => {
+                    setDeletingWorkspace(false)
+                    setDeleteConfirmName('')
+                    setWorkspaceEditError(null)
+                  }}
+                >
+                  返回
+                </Button>
+                <Button
+                  type='submit'
+                  variant='destructive'
+                  disabled={submitting || deleteConfirmName.trim() !== dashboard.workspace.name}
+                >
+                  {submitting ? '删除中…' : '确认删除'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 

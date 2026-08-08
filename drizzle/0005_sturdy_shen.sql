@@ -1,0 +1,1 @@
+ALTER TABLE `allowed_origins` DROP COLUMN `environment`;

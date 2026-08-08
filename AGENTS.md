@@ -43,16 +43,22 @@ pnpm deploy              # 构建 + wrangler deploy
 
 ### 密钥体系
 
-- `collectorKey`：公开、写入专用（示例 `bpc_live_...`），HMAC 签名由 `KEY_PEPPER` 生成（`src/lib/keys.server.ts`）。可出现在客户网页中，无读取权限。
+- `collectorKey`：公开、写入专用（示例 `bpc_live_...`），HMAC 签名由 `KEY_PEPPER` 生成（`src/lib/keys.server.ts`）。可出现在客户网页中，无读取权限。轮换时旧键**立即吊销**。
+- MVP **不提供** `queryApiKey` / 对外聚合 HTTP API；聚合仅经登录会话 + Server Functions。
 - `KEY_PEPPER` 变更会使存量采集键全部失效；`BETTER_AUTH_SECRET` 变更会使存量会话失效。
 
 ### 业务规则
 
-- 一个 Google 账号最多一个工作区（`workspaces.ownerUserId` 唯一），重复创建必须幂等返回已有工作区。
+- **多工作区**：一个 Google 账号可拥有多个工作区（默认上限 20）；控制台支持切换；工作区之间数据完全隔离。
+- 工作区删除需名称确认，级联删除其下项目、Origin、采集键、策略、原始事件与聚合；删除当前工作区后应切到仍存在的工作区或空状态。
+- 每个工作区最多 50 个项目；项目可停用、删除（名称确认）与轮换 `collectorKey`（旧键立即吊销）。
 - Origin 白名单精确匹配（scheme + host + port），仅 HTTPS（localhost 例外），创建时校验并去重。
 - 聚合按 UTC 自然日存储；查询时按客户端当前时区计算筛选与展示窗口；`raw_events` 保留 30 天，`daily_aggregates` 保留 13 个月（`src/ingest/consumer.ts` 的 Cron 清理）。
+- `raw_events` 可供**所有者**在控制台查看有限「最近事件」调试列表；禁止对外逐事件 API 与批量导出；界面不得称为访客/用户列表。
 - 看板语义：`belowSupportRate = belowSupportEvents / policyEligibleEvents`，**分母为 0 时必须返回 `null`（不是 0）**；分布仅展示占比前 5；策略修改只重算不改写历史事件。
 - 支持策略表 `support_policies` 主键为 `(projectId, browserFamily)`。
+- 暂不提供成员邀请、跨账号共享工作区或角色体系；工作区仅归属 `ownerUserId`。
+- 产品合同以 `PRODUCT_DEFINITION.md`（当前 1.1）为准；实现与文档冲突时先改文档或实现之一，禁止长期双轨。
 
 ## 易错点
 

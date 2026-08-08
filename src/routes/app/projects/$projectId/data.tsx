@@ -146,7 +146,7 @@ function ProjectDataPage() {
         <div className='flex flex-wrap items-center gap-2'>
           <Button asChild variant='outline' size='sm'>
             <Link to='/app/projects/$projectId/events' params={{ projectId: project.id }}>
-              实时数据
+              最近事件
             </Link>
           </Button>
           <Button asChild variant='outline' size='sm'>

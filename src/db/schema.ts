@@ -118,9 +118,6 @@ export const allowedOrigins = sqliteTable(
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' }),
     origin: text('origin').notNull(),
-    environment: text('environment', { enum: ['production', 'testing'] })
-      .default('production')
-      .notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .$defaultFn(() => new Date())
       .notNull(),

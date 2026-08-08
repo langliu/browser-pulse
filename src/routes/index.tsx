@@ -132,6 +132,13 @@ function Home() {
           </CardContent>
         </Card>
       </section>
+
+      <footer className='site-footer mt-auto flex flex-wrap items-center justify-between gap-3 py-6 text-xs text-[var(--sea-ink-soft)]'>
+        <span>样本不是 UV。不生成访客 ID，不保存原始 UA。</span>
+        <Link to='/privacy' className='text-[var(--palm)] underline-offset-4 hover:underline'>
+          隐私与字段清单
+        </Link>
+      </footer>
     </main>
   )
 }

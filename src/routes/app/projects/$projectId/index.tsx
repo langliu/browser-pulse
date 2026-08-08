@@ -13,14 +13,17 @@ import {
   Pencil,
   Percent,
   Radio,
+  RefreshCw,
   ShieldCheck,
   Table2,
+  Trash2,
   TrendingDown,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 
 import { DistributionChart, TrendChart, formatPercent } from '#/components/charts'
+import { CodeBlock } from '#/components/code-block'
 import { CopyButton } from '#/components/copy-button'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Badge } from '#/components/ui/badge'
@@ -40,8 +43,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { Textarea } from '#/components/ui/textarea'
 import { buildCollectorSnippet } from '#/lib/collector-snippet'
 import {
+  addProjectOrigin,
+  deleteProject,
   getProjectDashboard,
   getProjectDetail,
+  rotateCollectorKey,
   saveSupportPolicies,
   updateProject,
   updateProjectOrigins,
@@ -95,18 +101,31 @@ function ProjectPage() {
   const [policyError, setPolicyError] = useState<string | null>(null)
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
+  const [deletingProject, setDeletingProject] = useState(false)
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
   const [savingProject, setSavingProject] = useState(false)
   const [projectError, setProjectError] = useState<string | null>(null)
   const [originsDraft, setOriginsDraft] = useState(() => project.origins.join('\n'))
   const [savingOrigins, setSavingOrigins] = useState(false)
   const [originsSaved, setOriginsSaved] = useState(false)
   const [originsError, setOriginsError] = useState<string | null>(null)
+  const [rotatingKey, setRotatingKey] = useState(false)
+  const [rotateError, setRotateError] = useState<string | null>(null)
+  const [rotatedKeyNotice, setRotatedKeyNotice] = useState(false)
+  const [pageOrigin, setPageOrigin] = useState('')
+  const [addingOrigin, setAddingOrigin] = useState(false)
+  const [addOriginMessage, setAddOriginMessage] = useState<string | null>(null)
 
   useEffect(() => {
     setOriginsDraft(project.origins.join('\n'))
     setOriginsError(null)
     setOriginsSaved(false)
+    setAddOriginMessage(null)
   }, [project.id, project.origins])
+
+  useEffect(() => {
+    setPageOrigin(window.location.origin)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -192,11 +211,71 @@ function ProjectPage() {
         },
       })
       setProjectDialogOpen(false)
+      setDeletingProject(false)
+      setDeleteConfirmName('')
       await router.invalidate()
     } catch (caught) {
       setProjectError(caught instanceof Error ? caught.message : '项目更新失败')
     } finally {
       setSavingProject(false)
+    }
+  }
+
+  async function submitProjectDelete(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSavingProject(true)
+    setProjectError(null)
+    try {
+      const result = await deleteProject({
+        data: {
+          projectId: project.id,
+          confirmName: deleteConfirmName.trim(),
+        },
+      })
+      setProjectDialogOpen(false)
+      await router.navigate({
+        to: '/app',
+        search: { workspaceId: result.workspaceId },
+      })
+      await router.invalidate()
+    } catch (caught) {
+      setProjectError(caught instanceof Error ? caught.message : '项目删除失败')
+    } finally {
+      setSavingProject(false)
+    }
+  }
+
+  async function handleRotateCollectorKey() {
+    setRotatingKey(true)
+    setRotateError(null)
+    setRotatedKeyNotice(false)
+    try {
+      await rotateCollectorKey({ data: { projectId: project.id } })
+      setRotatedKeyNotice(true)
+      await router.invalidate()
+      window.setTimeout(() => setRotatedKeyNotice(false), 2500)
+    } catch (caught) {
+      setRotateError(caught instanceof Error ? caught.message : '采集键轮换失败')
+    } finally {
+      setRotatingKey(false)
+    }
+  }
+
+  async function handleAddCurrentOrigin() {
+    if (!pageOrigin) return
+    setAddingOrigin(true)
+    setAddOriginMessage(null)
+    setOriginsError(null)
+    try {
+      const result = await addProjectOrigin({
+        data: { projectId: project.id, origin: pageOrigin },
+      })
+      setAddOriginMessage(result.added ? `已加入 ${pageOrigin}` : `${pageOrigin} 已在白名单中`)
+      await router.invalidate()
+    } catch (caught) {
+      setOriginsError(caught instanceof Error ? caught.message : '添加 Origin 失败')
+    } finally {
+      setAddingOrigin(false)
     }
   }
 
@@ -309,7 +388,7 @@ function ProjectPage() {
           <Button asChild variant='outline'>
             <Link to='/app/projects/$projectId/events' params={{ projectId: project.id }}>
               <Radio className='size-4' aria-hidden='true' />
-              实时数据
+              最近事件
             </Link>
           </Button>
           <Button asChild variant='outline'>
@@ -325,76 +404,153 @@ function ProjectPage() {
         open={projectDialogOpen}
         onOpenChange={(open) => {
           setProjectDialogOpen(open)
-          if (!open) setProjectError(null)
+          if (!open) {
+            setProjectError(null)
+            setDeletingProject(false)
+            setDeleteConfirmName('')
+          }
         }}
       >
         <DialogContent className='max-w-md'>
           <DialogHeader>
-            <DialogTitle>编辑项目</DialogTitle>
+            <DialogTitle>{deletingProject ? '删除项目' : '编辑项目'}</DialogTitle>
             <DialogDescription>
-              修改项目名称或采集状态。停用后新事件会被拒绝，历史数据保留。
+              {deletingProject
+                ? '删除将吊销采集键并清除该项目全部事件、聚合、Origin 与支持策略，不可恢复。'
+                : '修改项目名称或采集状态。停用后新事件会被拒绝，历史数据保留。'}
             </DialogDescription>
           </DialogHeader>
-          <form
-            key={projectDialogOpen ? 'open' : 'closed'}
-            className='space-y-4'
-            onSubmit={submitProjectEdit}
-          >
-            <div className='space-y-2'>
-              <Label
-                htmlFor='edit-project-name'
-                className='text-sm font-semibold text-[var(--sea-ink)]'
-              >
-                项目名称
-              </Label>
-              <Input
-                id='edit-project-name'
-                name='name'
-                defaultValue={project.name}
-                minLength={2}
-                maxLength={80}
-                className='h-11 rounded-xl border-[var(--line)] bg-white/65 px-4 text-[var(--sea-ink)] shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
-                autoFocus
-                required
-              />
-            </div>
-            <div className='space-y-2'>
-              <Label
-                htmlFor='edit-project-status'
-                className='text-sm font-semibold text-[var(--sea-ink)]'
-              >
-                采集状态
-              </Label>
-              <select
-                id='edit-project-status'
-                name='status'
-                defaultValue={project.status}
-                className='border-input bg-background h-11 w-full rounded-xl border border-[var(--line)] bg-white/65 px-4 text-sm text-[var(--sea-ink)] outline-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[3px] focus-visible:ring-[var(--lagoon)]/20'
-              >
-                <option value='active'>采集中</option>
-                <option value='disabled'>已停用</option>
-              </select>
-            </div>
-            {projectError ? (
+          {!deletingProject ? (
+            <form
+              key={projectDialogOpen ? 'open' : 'closed'}
+              className='space-y-4'
+              onSubmit={submitProjectEdit}
+            >
+              <div className='space-y-2'>
+                <Label
+                  htmlFor='edit-project-name'
+                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                >
+                  项目名称
+                </Label>
+                <Input
+                  id='edit-project-name'
+                  name='name'
+                  defaultValue={project.name}
+                  minLength={2}
+                  maxLength={80}
+                  className='h-11 rounded-xl border-[var(--line)] bg-white/65 px-4 text-[var(--sea-ink)] shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                  autoFocus
+                  required
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label
+                  htmlFor='edit-project-status'
+                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                >
+                  采集状态
+                </Label>
+                <select
+                  id='edit-project-status'
+                  name='status'
+                  defaultValue={project.status}
+                  className='border-input bg-background h-11 w-full rounded-xl border border-[var(--line)] bg-white/65 px-4 text-sm text-[var(--sea-ink)] outline-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[3px] focus-visible:ring-[var(--lagoon)]/20'
+                >
+                  <option value='active'>采集中</option>
+                  <option value='disabled'>已停用</option>
+                </select>
+              </div>
+              {projectError ? (
+                <Alert variant='destructive' className='rounded-xl'>
+                  <AlertTitle>保存失败</AlertTitle>
+                  <AlertDescription>{projectError}</AlertDescription>
+                </Alert>
+              ) : null}
+              <DialogFooter className='sm:justify-between'>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  className='text-destructive hover:text-destructive'
+                  disabled={savingProject}
+                  onClick={() => {
+                    setProjectError(null)
+                    setDeleteConfirmName('')
+                    setDeletingProject(true)
+                  }}
+                >
+                  <Trash2 className='size-4' aria-hidden='true' />
+                  删除项目
+                </Button>
+                <div className='flex flex-col-reverse gap-2 sm:flex-row'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    disabled={savingProject}
+                    onClick={() => setProjectDialogOpen(false)}
+                  >
+                    取消
+                  </Button>
+                  <Button type='submit' disabled={savingProject}>
+                    {savingProject ? '保存中…' : '保存'}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </form>
+          ) : (
+            <form className='space-y-4' onSubmit={submitProjectDelete}>
               <Alert variant='destructive' className='rounded-xl'>
-                <AlertTitle>保存失败</AlertTitle>
-                <AlertDescription>{projectError}</AlertDescription>
+                <AlertTitle>确认删除项目</AlertTitle>
+                <AlertDescription>
+                  将永久删除「{project.name}」及其全部采集数据与配置。
+                </AlertDescription>
               </Alert>
-            ) : null}
-            <DialogFooter>
-              <Button
-                type='button'
-                variant='outline'
-                disabled={savingProject}
-                onClick={() => setProjectDialogOpen(false)}
-              >
-                取消
-              </Button>
-              <Button type='submit' disabled={savingProject}>
-                {savingProject ? '保存中…' : '保存'}
-              </Button>
-            </DialogFooter>
-          </form>
+              <div className='space-y-2'>
+                <Label
+                  htmlFor='delete-project-confirm'
+                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                >
+                  输入项目名称 <code>{project.name}</code> 以确认
+                </Label>
+                <Input
+                  id='delete-project-confirm'
+                  value={deleteConfirmName}
+                  onChange={(event) => setDeleteConfirmName(event.target.value)}
+                  autoFocus
+                  autoComplete='off'
+                  className='h-11 rounded-xl'
+                  required
+                />
+              </div>
+              {projectError ? (
+                <Alert variant='destructive' className='rounded-xl'>
+                  <AlertTitle>删除失败</AlertTitle>
+                  <AlertDescription>{projectError}</AlertDescription>
+                </Alert>
+              ) : null}
+              <DialogFooter>
+                <Button
+                  type='button'
+                  variant='outline'
+                  disabled={savingProject}
+                  onClick={() => {
+                    setDeletingProject(false)
+                    setDeleteConfirmName('')
+                    setProjectError(null)
+                  }}
+                >
+                  返回
+                </Button>
+                <Button
+                  type='submit'
+                  variant='destructive'
+                  disabled={savingProject || deleteConfirmName.trim() !== project.name}
+                >
+                  {savingProject ? '删除中…' : '确认删除'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -496,6 +652,11 @@ function ProjectPage() {
             deviceClasses={deviceClasses}
             setDeviceClasses={setDeviceClasses}
             toggleFilter={toggleFilter}
+            pageOrigin={pageOrigin}
+            addingOrigin={addingOrigin}
+            addOriginMessage={addOriginMessage}
+            originsError={originsError}
+            onAddCurrentOrigin={handleAddCurrentOrigin}
           />
         </TabsContent>
 
@@ -511,17 +672,16 @@ function ProjectPage() {
               <CopyButton value={snippet} label='复制完整代码' />
             </CardHeader>
             <CardContent>
-              <pre className='max-h-[34rem] overflow-auto rounded-xl border border-[var(--line)] bg-[#102327] p-5 text-xs leading-6 text-[#d7ece8] shadow-inner'>
-                <code>{snippet}</code>
-              </pre>
+              <CodeBlock code={snippet} />
               <div className='mt-5 rounded-xl border border-[var(--line)] bg-white/60 p-4'>
                 <div className='mb-2 flex items-center justify-between gap-3'>
                   <p className='text-sm font-medium text-[var(--sea-ink)]'>站点同意后调用</p>
                   <CopyButton value={'const result = await collectBrowserPulse();'} />
                 </div>
-                <code className='block overflow-x-auto p-3 text-xs'>
-                  const result = await collectBrowserPulse();
-                </code>
+                <CodeBlock
+                  code={'const result = await collectBrowserPulse();'}
+                  className='max-h-none p-3'
+                />
               </div>
               <div className='mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--chip-line)] bg-[var(--chip-bg)] px-4 py-3'>
                 <p className='text-sm text-[var(--sea-ink-soft)]'>
@@ -545,7 +705,7 @@ function ProjectPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value='origins' className='mt-4'>
+        <TabsContent value='origins' className='mt-4' id='origins-panel'>
           <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
             <CardHeader>
               <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
@@ -634,19 +794,43 @@ function ProjectPage() {
                 </code>
                 <CopyButton value={project.collectorKey} />
               </div>
-              <Button asChild variant='outline' size='sm'>
-                <Link
-                  to='/collector-test'
-                  search={{
-                    collectorOrigin: project.collectorOrigin,
-                    collectorKey: project.collectorKey,
-                  }}
-                  target='_blank'
-                  rel='noreferrer'
+              <p className='text-muted-foreground text-xs leading-5'>
+                轮换会立即吊销旧键并生成新键。请同步更新站点接入代码，否则旧代码将收到 401。
+              </p>
+              {rotateError ? (
+                <Alert variant='destructive' className='rounded-xl'>
+                  <AlertTitle>轮换失败</AlertTitle>
+                  <AlertDescription>{rotateError}</AlertDescription>
+                </Alert>
+              ) : null}
+              {rotatedKeyNotice ? (
+                <p className='text-xs text-[var(--palm)]'>已轮换，请复制上方新键并更新站点代码。</p>
+              ) : null}
+              <div className='flex flex-wrap gap-2'>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  disabled={rotatingKey}
+                  onClick={() => void handleRotateCollectorKey()}
                 >
-                  用此键打开采集测试
-                </Link>
-              </Button>
+                  <RefreshCw className='size-4' aria-hidden='true' />
+                  {rotatingKey ? '轮换中…' : '轮换采集键'}
+                </Button>
+                <Button asChild variant='outline' size='sm'>
+                  <Link
+                    to='/collector-test'
+                    search={{
+                      collectorOrigin: project.collectorOrigin,
+                      collectorKey: project.collectorKey,
+                    }}
+                    target='_blank'
+                    rel='noreferrer'
+                  >
+                    用此键打开采集测试
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -740,6 +924,11 @@ interface DashboardOverviewProps {
   deviceClasses: DeviceClassFilter[]
   setDeviceClasses: (value: DeviceClassFilter[]) => void
   toggleFilter: <T extends string>(value: T, current: T[], setter: (next: T[]) => void) => void
+  pageOrigin: string
+  addingOrigin: boolean
+  addOriginMessage: string | null
+  originsError: string | null
+  onAddCurrentOrigin: () => void | Promise<void>
 }
 
 function DashboardOverview({
@@ -756,6 +945,11 @@ function DashboardOverview({
   deviceClasses,
   setDeviceClasses,
   toggleFilter,
+  pageOrigin,
+  addingOrigin,
+  addOriginMessage,
+  originsError,
+  onAddCurrentOrigin,
 }: DashboardOverviewProps) {
   if (loadError) {
     return (
@@ -780,28 +974,115 @@ function DashboardOverview({
   const refreshing = loading
 
   if (dashboard.totalEvents === 0) {
+    const originAllowed = pageOrigin ? project.origins.includes(pageOrigin) : false
     return (
-      <>
-        <Alert className='border-[var(--lagoon)]/40 bg-white/70'>
-          <Code2 className='size-4' aria-hidden='true' />
-          <AlertTitle>等待第一个有效事件</AlertTitle>
-          <AlertDescription>
-            先确认 Origin 已配置，再复制完整代码，并在站点同意流程完成后调用{' '}
-            <code>collectBrowserPulse()</code>。
-          </AlertDescription>
-        </Alert>
+      <div className='space-y-4'>
+        <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
+              <Code2 className='size-5 text-[var(--palm)]' aria-hidden='true' />
+              接入向导：拿到第一个有效事件
+            </CardTitle>
+            <CardDescription className='leading-6'>
+              目标是 5 分钟内完成：白名单 Origin → 复制代码或测试页 → 收到 202 → 看板出现样本。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <ol className='space-y-3 text-sm leading-6 text-[var(--sea-ink-soft)]'>
+              <li className='rounded-xl border border-[var(--line)] bg-white/70 px-4 py-3'>
+                <p className='font-semibold text-[var(--sea-ink)]'>1. 确认 Origin 白名单</p>
+                <p className='mt-1'>
+                  当前控制台 Origin： <code>{pageOrigin || '检测中…'}</code>{' '}
+                  {pageOrigin ? (
+                    originAllowed ? (
+                      <Badge className='ml-2'>已在白名单</Badge>
+                    ) : (
+                      <Badge variant='secondary' className='ml-2'>
+                        未加入
+                      </Badge>
+                    )
+                  ) : null}
+                </p>
+                <div className='mt-2 flex flex-wrap gap-2'>
+                  <Button
+                    type='button'
+                    size='sm'
+                    variant='outline'
+                    disabled={!pageOrigin || addingOrigin || originAllowed}
+                    onClick={() => void onAddCurrentOrigin()}
+                  >
+                    {addingOrigin ? '添加中…' : '一键加入当前 Origin'}
+                  </Button>
+                  <p className='text-muted-foreground text-xs'>
+                    也可在上方「Origin」标签中批量编辑。
+                  </p>
+                </div>
+                {addOriginMessage ? (
+                  <p className='mt-2 text-xs text-[var(--palm)]'>{addOriginMessage}</p>
+                ) : null}
+                {originsError ? (
+                  <p className='text-destructive mt-2 text-xs'>{originsError}</p>
+                ) : null}
+              </li>
+              <li className='rounded-xl border border-[var(--line)] bg-white/70 px-4 py-3'>
+                <p className='font-semibold text-[var(--sea-ink)]'>2. 发送测试事件</p>
+                <p className='mt-1'>
+                  复制「接入代码」到你的站点，或打开站内测试页（测试页 Origin 也须在白名单）。
+                </p>
+                <div className='mt-2 flex flex-wrap gap-2'>
+                  <Button asChild size='sm' variant='outline'>
+                    <Link
+                      to='/collector-test'
+                      search={{
+                        collectorOrigin: project.collectorOrigin,
+                        collectorKey: project.collectorKey,
+                      }}
+                      target='_blank'
+                      rel='noreferrer'
+                    >
+                      打开采集测试
+                    </Link>
+                  </Button>
+                </div>
+              </li>
+              <li className='rounded-xl border border-[var(--line)] bg-white/70 px-4 py-3'>
+                <p className='font-semibold text-[var(--sea-ink)]'>3. 确认入账</p>
+                <p className='mt-1'>
+                  成功应返回 <code>accepted</code> / HTTP
+                  202。聚合通常在数分钟内出现；可到「最近事件」调试页查看是否已落库。
+                </p>
+                <Button asChild size='sm' variant='outline' className='mt-2'>
+                  <Link to='/app/projects/$projectId/events' params={{ projectId: project.id }}>
+                    查看最近事件
+                  </Link>
+                </Button>
+              </li>
+            </ol>
+            {project.origins.length > 0 ? (
+              <div className='text-muted-foreground text-xs'>
+                已配置 Origin：{project.origins.join(' · ')}
+              </div>
+            ) : (
+              <Alert variant='destructive' className='rounded-xl'>
+                <AlertTitle>尚未配置 Origin</AlertTitle>
+                <AlertDescription>没有白名单时所有采集请求都会被拒绝。</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
         {project.lastRejectedReason && (
-          <Alert className='mt-4 border-[var(--line)] bg-white/70'>
+          <Alert className='border-[var(--line)] bg-white/70'>
             <CircleOff className='size-4' aria-hidden='true' />
             <AlertTitle>最近一次服务端拒绝</AlertTitle>
             <AlertDescription>
               <code>{project.lastRejectedReason}</code>
               {project.lastRejectedAt &&
                 ` · ${new Date(project.lastRejectedAt).toLocaleString('zh-CN')}`}
+              。常见原因：Origin 未放行、采集键已吊销、速率限制。
             </AlertDescription>
           </Alert>
         )}
-      </>
+      </div>
     )
   }
 
@@ -855,9 +1136,51 @@ function DashboardOverview({
                 ? formatMetricDateTime(project.lastSuccessfulCollectionAt)
                 : '尚未收到'
             }
-            detail='队列消费完成后更新'
+            detail={
+              project.status === 'disabled' ? '项目已停用，新事件会被拒绝' : '队列消费完成后更新'
+            }
           />
         </div>
+
+        {dashboard.unknownRate > 0 ||
+        dashboard.uaChRate > 0 ||
+        dashboard.userAgentFallbackRate > 0 ? (
+          <p className='text-muted-foreground text-xs leading-5'>
+            识别来源：UA-CH {formatPercent(dashboard.uaChRate)} · UA 回退{' '}
+            {formatPercent(dashboard.userAgentFallbackRate)} · 未知家族/主版本{' '}
+            {formatPercent(dashboard.unknownRate)}
+            {dashboard.unknownDetectionEvents > 0
+              ? `（${dashboard.unknownDetectionEvents.toLocaleString('zh-CN')} 样本）`
+              : ''}
+          </p>
+        ) : null}
+
+        {dashboard.suggestedPolicies.length > 0 ? (
+          <Alert className='border-[var(--chip-line)] bg-[var(--chip-bg)]'>
+            <ShieldCheck className='size-4 text-[var(--palm)]' aria-hidden='true' />
+            <AlertTitle>支持线建议（覆盖约 95% 该家族样本）</AlertTitle>
+            <AlertDescription className='mt-2 flex flex-wrap gap-2'>
+              {dashboard.suggestedPolicies.map((item) => (
+                <span
+                  key={item.browserFamily}
+                  className='rounded-full border border-[var(--chip-line)] bg-white/80 px-2.5 py-1 text-xs font-medium text-[var(--sea-ink)]'
+                >
+                  {item.browserFamily} ≥{item.minimumSupportedMajor}
+                </span>
+              ))}
+              <span className='text-muted-foreground text-xs'>
+                仅供参考；样本过少的家族不会给出建议。可在「编辑支持策略」中采纳。
+              </span>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {project.status === 'disabled' ? (
+          <Alert variant='destructive'>
+            <AlertTitle>项目已停用</AlertTitle>
+            <AlertDescription>新的采集请求会被拒绝；历史聚合仍可查看。</AlertDescription>
+          </Alert>
+        ) : null}
 
         <Card className='gap-0 border-[var(--line)] bg-[var(--surface-strong)] py-0 shadow-none'>
           <CardContent className='space-y-2.5 px-4 py-3'>
@@ -957,8 +1280,8 @@ function DashboardOverview({
               {dashboard.unknownRate > 0 && (
                 <p className='text-muted-foreground mt-4 rounded-lg border border-[var(--line)] bg-white/60 px-3 py-2 text-xs'>
                   无法识别浏览器家族或主版本的样本占 {formatPercent(dashboard.unknownRate)}（
-                  {dashboard.unknownDetectionEvents.toLocaleString('zh-CN')} 事件， detectionSource
-                  覆盖见采集端）。
+                  {dashboard.unknownDetectionEvents.toLocaleString('zh-CN')}{' '}
+                  事件）。识别来源占比见上方摘要。
                 </p>
               )}
             </CardContent>

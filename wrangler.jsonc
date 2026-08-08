@@ -5,7 +5,11 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
   "observability": {
-    "enabled": false,
+    "enabled": true,
+    "logs": {
+      "enabled": false,
+      "invocation_logs": true,
+    },
   },
   "routes": [
     {
@@ -13,6 +17,7 @@
       "custom_domain": true,
     },
   ],
+
   "d1_databases": [
     {
       "binding": "DB",

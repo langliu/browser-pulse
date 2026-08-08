@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as CollectorTestRouteImport } from './routes/collector-test'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/app/projects/$projectId'
@@ -33,6 +34,11 @@ const AppRoute = AppRouteImport.update({
 const CollectorTestRoute = CollectorTestRouteImport.update({
   id: '/collector-test',
   path: '/collector-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/collector-test': typeof CollectorTestRoute
+  '/privacy': typeof PrivacyRoute
   '/app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteWithChildren
@@ -90,6 +97,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/collector-test': typeof CollectorTestRoute
+  '/privacy': typeof PrivacyRoute
   '/app': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/v1/browser-events/$collectorKey': typeof V1BrowserEventsCollectorKeyRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/collector-test': typeof CollectorTestRoute
+  '/privacy': typeof PrivacyRoute
   '/app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteWithChildren
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/collector-test'
+    | '/privacy'
     | '/app/'
     | '/api/auth/$'
     | '/app/projects/$projectId'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/collector-test'
+    | '/privacy'
     | '/app'
     | '/api/auth/$'
     | '/v1/browser-events/$collectorKey'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/collector-test'
+    | '/privacy'
     | '/app/'
     | '/api/auth/$'
     | '/app/projects/$projectId'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   CollectorTestRoute: typeof CollectorTestRoute
+  PrivacyRoute: typeof PrivacyRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   V1BrowserEventsCollectorKeyRoute: typeof V1BrowserEventsCollectorKeyRoute
 }
@@ -176,6 +189,13 @@ declare module '@tanstack/react-router' {
       path: '/collector-test'
       fullPath: '/collector-test'
       preLoaderRoute: typeof CollectorTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/': {
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   CollectorTestRoute: CollectorTestRoute,
+  PrivacyRoute: PrivacyRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   V1BrowserEventsCollectorKeyRoute: V1BrowserEventsCollectorKeyRoute,
 }

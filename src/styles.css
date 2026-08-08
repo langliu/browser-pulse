@@ -357,3 +357,16 @@ a {
     color: var(--foreground);
   }
 }
+
+/* sugar-high tokens for dark code panels */
+.code-block {
+  --sh-class: #7dd3c7;
+  --sh-identifier: #d7ece8;
+  --sh-sign: #7f9a96;
+  --sh-property: #9ad7ff;
+  --sh-entity: #7ec8ff;
+  --sh-jsxliterals: #c4b5fd;
+  --sh-string: #9ae6b4;
+  --sh-keyword: #f0abfc;
+  --sh-comment: #6b8580;
+}
