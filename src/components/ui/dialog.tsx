@@ -50,7 +50,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot='dialog-content'
         className={cn(
-          'bg-[var(--surface-strong)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl border border-[var(--line)] p-5 shadow-lg duration-200 outline-none sm:p-6',
+          'bg-(--surface-strong) data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl border border-(--line) p-5 shadow-lg duration-200 outline-hidden sm:p-6',
           className,
         )}
         {...props}
@@ -59,7 +59,7 @@ function DialogContent({
         {showCloseButton ? (
           <DialogPrimitive.Close
             data-slot='dialog-close'
-            className='text-muted-foreground absolute top-3.5 right-3.5 inline-flex size-8 items-center justify-center rounded-full transition-colors hover:bg-white/80 hover:text-[var(--sea-ink)]'
+            className='text-muted-foreground absolute top-3.5 right-3.5 inline-flex size-8 items-center justify-center rounded-full transition-colors hover:bg-white/80 hover:text-(--sea-ink)'
           >
             <XIcon className='size-4' aria-hidden='true' />
             <span className='sr-only'>关闭</span>
@@ -94,7 +94,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot='dialog-title'
-      className={cn('text-base font-semibold text-[var(--sea-ink)]', className)}
+      className={cn('text-base font-semibold text-(--sea-ink)', className)}
       {...props}
     />
   )

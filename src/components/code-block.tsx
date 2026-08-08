@@ -16,7 +16,7 @@ export function CodeBlock({
   return (
     <pre
       className={cn(
-        'code-block max-h-136 overflow-auto rounded-xl border border-[var(--line)] bg-[#102327] p-5 text-xs leading-6 text-[#d7ece8] shadow-inner',
+        'code-block max-h-136 overflow-auto rounded-xl border border-(--line) bg-[#102327] p-5 text-xs leading-6 text-[#d7ece8] shadow-inner',
         className,
       )}
     >

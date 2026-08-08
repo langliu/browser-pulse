@@ -26,15 +26,15 @@ function AppLayout() {
 
   return (
     <div className='min-h-screen'>
-      <header className='sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--header-bg)] backdrop-blur-xl'>
+      <header className='sticky top-0 z-30 border-b border-(--line) bg-(--header-bg) backdrop-blur-xl'>
         <div className='mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8 lg:px-10'>
           <a href='/app' className='flex items-center gap-3 no-underline'>
-            <div className='flex size-9 items-center justify-center rounded-xl bg-[var(--sea-ink)] text-white'>
+            <div className='flex size-9 items-center justify-center rounded-xl bg-(--sea-ink) text-white'>
               <Activity className='size-4' aria-hidden='true' />
             </div>
             <div>
-              <p className='text-sm font-semibold text-[var(--sea-ink)]'>Browser Pulse</p>
-              <p className='text-[11px] text-[var(--sea-ink-soft)]'>{viewer.user?.email}</p>
+              <p className='text-sm font-semibold text-(--sea-ink)'>Browser Pulse</p>
+              <p className='text-[11px] text-(--sea-ink-soft)'>{viewer.user?.email}</p>
             </div>
           </a>
           <div className='flex items-center gap-3'>

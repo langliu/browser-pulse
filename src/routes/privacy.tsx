@@ -45,23 +45,21 @@ function PrivacyPage() {
       </Button>
 
       <div className='mb-8'>
-        <p className='text-xs font-bold tracking-[0.16em] text-[var(--kicker)] uppercase'>
-          Privacy
-        </p>
-        <h1 className='mt-2 font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
+        <p className='text-xs font-bold tracking-[0.16em] text-(--kicker) uppercase'>Privacy</p>
+        <h1 className='mt-2 font-serif text-4xl font-bold tracking-tight text-(--sea-ink)'>
           隐私与数据采集说明
         </h1>
-        <p className='mt-3 text-base leading-7 text-[var(--sea-ink-soft)]'>
+        <p className='mt-3 text-base leading-7 text-(--sea-ink-soft)'>
           Browser Pulse
           只处理最小匿名浏览器环境字段，用于版本分布与支持线决策。接入网站仍须在自身隐私政策中完成告知。
         </p>
       </div>
 
       <div className='space-y-5'>
-        <Card className='rounded-2xl border-[var(--line)] bg-[var(--surface-strong)]'>
+        <Card className='rounded-2xl border-(--line) bg-(--surface-strong)'>
           <CardHeader>
-            <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
-              <Shield className='size-5 text-[var(--palm)]' aria-hidden='true' />
+            <CardTitle className='flex items-center gap-2 text-(--sea-ink)'>
+              <Shield className='size-5 text-(--palm)' aria-hidden='true' />
               可复制字段清单
             </CardTitle>
             <CardDescription>
@@ -72,15 +70,15 @@ function PrivacyPage() {
             <div className='flex justify-end'>
               <CopyButton value={FIELD_LIST} label='复制全文' />
             </div>
-            <pre className='overflow-auto rounded-xl border border-[var(--line)] bg-white/70 p-4 text-xs leading-6 whitespace-pre-wrap text-[var(--sea-ink)]'>
+            <pre className='overflow-auto rounded-xl border border-(--line) bg-white/70 p-4 text-xs leading-6 whitespace-pre-wrap text-(--sea-ink)'>
               {FIELD_LIST}
             </pre>
           </CardContent>
         </Card>
 
-        <Card className='rounded-2xl border-[var(--line)] bg-[var(--surface-strong)]'>
+        <Card className='rounded-2xl border-(--line) bg-(--surface-strong)'>
           <CardHeader>
-            <CardTitle className='text-[var(--sea-ink)]'>数据驻留边界</CardTitle>
+            <CardTitle className='text-(--sea-ink)'>数据驻留边界</CardTitle>
             <CardDescription className='leading-6'>
               当前 MVP 运行在 Cloudflare
               全球网络。公开材料中的区域提示不等于中国大陆数据驻留承诺；若业务要求严格境内存储，需另立部署架构并完成合规评估。

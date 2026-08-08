@@ -327,7 +327,7 @@ function ProjectPage() {
           </div>
           <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
             <div className='flex min-w-0 flex-wrap items-center gap-3'>
-              <h1 className='font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
+              <h1 className='font-serif text-4xl font-bold tracking-tight text-(--sea-ink)'>
                 {project.name}
               </h1>
               <Button
@@ -346,17 +346,17 @@ function ProjectPage() {
             </div>
             <div className='flex min-w-0 flex-wrap items-center gap-2'>
               <span className='text-muted-foreground inline-flex items-center gap-1 text-xs font-medium'>
-                <ShieldCheck className='size-3.5 text-[var(--palm)]' aria-hidden='true' />
+                <ShieldCheck className='size-3.5 text-(--palm)' aria-hidden='true' />
                 支持策略
               </span>
               {dashboard?.policies.length ? (
                 dashboard.policies.map((policy) => (
                   <span
                     key={policy.browserFamily}
-                    className='inline-flex items-center gap-1 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-2.5 py-1 text-xs font-medium text-[var(--sea-ink)]'
+                    className='inline-flex items-center gap-1 rounded-full border border-(--chip-line) bg-(--chip-bg) px-2.5 py-1 text-xs font-medium text-(--sea-ink)'
                   >
                     <span>{policy.browserFamily}</span>
-                    <span className='text-[var(--sea-ink-soft)] tabular-nums'>
+                    <span className='text-(--sea-ink-soft) tabular-nums'>
                       ≥{policy.minimumSupportedMajor}
                     </span>
                   </span>
@@ -378,9 +378,7 @@ function ProjectPage() {
                 <Pencil className='size-3.5' aria-hidden='true' />
                 编辑
               </Button>
-              {policiesSaved ? (
-                <span className='text-xs text-[var(--palm)]'>已保存并重算</span>
-              ) : null}
+              {policiesSaved ? <span className='text-xs text-(--palm)'>已保存并重算</span> : null}
             </div>
           </div>
         </div>
@@ -429,7 +427,7 @@ function ProjectPage() {
               <div className='space-y-2'>
                 <Label
                   htmlFor='edit-project-name'
-                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                  className='text-sm font-semibold text-(--sea-ink)'
                 >
                   项目名称
                 </Label>
@@ -439,7 +437,7 @@ function ProjectPage() {
                   defaultValue={project.name}
                   minLength={2}
                   maxLength={80}
-                  className='h-11 rounded-xl border-[var(--line)] bg-white/65 px-4 text-[var(--sea-ink)] shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                  className='h-11 rounded-xl border-(--line) bg-white/65 px-4 text-(--sea-ink) shadow-none focus-visible:border-(--lagoon-deep) focus-visible:ring-(--lagoon)/20'
                   autoFocus
                   required
                 />
@@ -447,7 +445,7 @@ function ProjectPage() {
               <div className='space-y-2'>
                 <Label
                   htmlFor='edit-project-status'
-                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                  className='text-sm font-semibold text-(--sea-ink)'
                 >
                   采集状态
                 </Label>
@@ -455,7 +453,7 @@ function ProjectPage() {
                   id='edit-project-status'
                   name='status'
                   defaultValue={project.status}
-                  className='border-input bg-background h-11 w-full rounded-xl border border-[var(--line)] bg-white/65 px-4 text-sm text-[var(--sea-ink)] outline-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[3px] focus-visible:ring-[var(--lagoon)]/20'
+                  className='border-input bg-background h-11 w-full rounded-xl border border-(--line) bg-white/65 px-4 text-sm text-(--sea-ink) outline-hidden focus-visible:border-(--lagoon-deep) focus-visible:ring-3 focus-visible:ring-(--lagoon)/20'
                 >
                   <option value='active'>采集中</option>
                   <option value='disabled'>已停用</option>
@@ -508,7 +506,7 @@ function ProjectPage() {
               <div className='space-y-2'>
                 <Label
                   htmlFor='delete-project-confirm'
-                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                  className='text-sm font-semibold text-(--sea-ink)'
                 >
                   输入项目名称 <code>{project.name}</code> 以确认
                 </Label>
@@ -564,7 +562,7 @@ function ProjectPage() {
         <DialogContent className='max-w-2xl'>
           <DialogHeader>
             <DialogTitle className='flex items-center gap-2'>
-              <ShieldCheck className='size-4 text-[var(--palm)]' aria-hidden='true' />
+              <ShieldCheck className='size-4 text-(--palm)' aria-hidden='true' />
               编辑最低支持版本
             </DialogTitle>
             <DialogDescription>
@@ -584,11 +582,11 @@ function ProjectPage() {
                 return (
                   <div
                     key={family}
-                    className='flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/70 px-4 py-3'
+                    className='flex items-center justify-between gap-3 rounded-xl border border-(--line) bg-white/70 px-4 py-3'
                   >
                     <Label
                       htmlFor={`policy-${family}`}
-                      className='text-sm font-medium text-[var(--sea-ink)]'
+                      className='text-sm font-medium text-(--sea-ink)'
                     >
                       {family}
                     </Label>
@@ -661,10 +659,10 @@ function ProjectPage() {
         </TabsContent>
 
         <TabsContent value='snippet' className='mt-4'>
-          <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+          <Card className='border-(--line) bg-(--surface-strong)'>
             <CardHeader className='flex-row items-start justify-between gap-4'>
               <div>
-                <CardTitle className='text-[var(--sea-ink)]'>内联采集代码</CardTitle>
+                <CardTitle className='text-(--sea-ink)'>内联采集代码</CardTitle>
                 <CardDescription className='mt-2 leading-6'>
                   无 npm 包、无远程 SDK。复制到站点代码中，但不要在片段加载时自动调用。
                 </CardDescription>
@@ -673,9 +671,9 @@ function ProjectPage() {
             </CardHeader>
             <CardContent>
               <CodeBlock code={snippet} />
-              <div className='mt-5 rounded-xl border border-[var(--line)] bg-white/60 p-4'>
+              <div className='mt-5 rounded-xl border border-(--line) bg-white/60 p-4'>
                 <div className='mb-2 flex items-center justify-between gap-3'>
-                  <p className='text-sm font-medium text-[var(--sea-ink)]'>站点同意后调用</p>
+                  <p className='text-sm font-medium text-(--sea-ink)'>站点同意后调用</p>
                   <CopyButton value={'const result = await collectBrowserPulse();'} />
                 </div>
                 <CodeBlock
@@ -683,8 +681,8 @@ function ProjectPage() {
                   className='max-h-none p-3'
                 />
               </div>
-              <div className='mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--chip-line)] bg-[var(--chip-bg)] px-4 py-3'>
-                <p className='text-sm text-[var(--sea-ink-soft)]'>
+              <div className='mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--chip-line) bg-(--chip-bg) px-4 py-3'>
+                <p className='text-sm text-(--sea-ink-soft)'>
                   也可在站内测试页验证采集；请先把测试页 Origin 加入白名单。
                 </p>
                 <Button asChild variant='outline' size='sm'>
@@ -706,9 +704,9 @@ function ProjectPage() {
         </TabsContent>
 
         <TabsContent value='origins' className='mt-4' id='origins-panel'>
-          <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+          <Card className='border-(--line) bg-(--surface-strong)'>
             <CardHeader>
-              <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
+              <CardTitle className='flex items-center gap-2 text-(--sea-ink)'>
                 <Globe2 className='size-5' aria-hidden='true' />
                 允许的 Origin
               </CardTitle>
@@ -721,7 +719,7 @@ function ProjectPage() {
                 <div className='space-y-2'>
                   <Label
                     htmlFor='edit-project-origins'
-                    className='text-sm font-semibold text-[var(--sea-ink)]'
+                    className='text-sm font-semibold text-(--sea-ink)'
                   >
                     Origin 列表
                   </Label>
@@ -730,10 +728,10 @@ function ProjectPage() {
                     value={originsDraft}
                     onChange={(event) => setOriginsDraft(event.target.value)}
                     rows={6}
-                    className='min-h-36 resize-y rounded-xl border-[var(--line)] bg-white/65 px-4 py-3 text-[var(--sea-ink)] shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                    className='min-h-36 resize-y rounded-xl border-(--line) bg-white/65 px-4 py-3 text-(--sea-ink) shadow-none focus-visible:border-(--lagoon-deep) focus-visible:ring-(--lagoon)/20'
                     required
                   />
-                  <p className='rounded-lg border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-2 text-xs leading-5 text-[var(--sea-ink-soft)]'>
+                  <p className='rounded-lg border border-(--chip-line) bg-(--chip-bg) px-3 py-2 text-xs leading-5 text-(--sea-ink-soft)'>
                     仅接受 HTTPS；本地开发可使用 http://localhost。保存后立即生效。
                   </p>
                 </div>
@@ -746,7 +744,7 @@ function ProjectPage() {
                       {project.origins.map((origin) => (
                         <div
                           key={origin}
-                          className='flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/60 px-4 py-3'
+                          className='flex items-center justify-between gap-3 rounded-xl border border-(--line) bg-white/60 px-4 py-3'
                         >
                           <code className='min-w-0 truncate border-0 bg-transparent p-0'>
                             {origin}
@@ -768,7 +766,7 @@ function ProjectPage() {
                     {savingOrigins ? '保存中…' : '保存 Origin'}
                   </Button>
                   {originsSaved ? (
-                    <span className='text-xs text-[var(--palm)]'>已保存并立即生效</span>
+                    <span className='text-xs text-(--palm)'>已保存并立即生效</span>
                   ) : null}
                 </div>
               </form>
@@ -777,9 +775,9 @@ function ProjectPage() {
         </TabsContent>
 
         <TabsContent value='key' className='mt-4'>
-          <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+          <Card className='border-(--line) bg-(--surface-strong)'>
             <CardHeader>
-              <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
+              <CardTitle className='flex items-center gap-2 text-(--sea-ink)'>
                 <KeyRound className='size-5' aria-hidden='true' />
                 公开采集键
               </CardTitle>
@@ -788,7 +786,7 @@ function ProjectPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className='space-y-3'>
-              <div className='flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-white/60 p-4 sm:flex-row sm:items-center sm:justify-between'>
+              <div className='flex flex-col gap-3 rounded-xl border border-(--line) bg-white/60 p-4 sm:flex-row sm:items-center sm:justify-between'>
                 <code className='overflow-x-auto border-0 bg-transparent p-0 text-xs'>
                   {project.collectorKey}
                 </code>
@@ -804,7 +802,7 @@ function ProjectPage() {
                 </Alert>
               ) : null}
               {rotatedKeyNotice ? (
-                <p className='text-xs text-[var(--palm)]'>已轮换，请复制上方新键并更新站点代码。</p>
+                <p className='text-xs text-(--palm)'>已轮换，请复制上方新键并更新站点代码。</p>
               ) : null}
               <div className='flex flex-wrap gap-2'>
                 <Button
@@ -851,10 +849,10 @@ function MetricCard({
   detail: React.ReactNode
 }) {
   return (
-    <Card className='h-full gap-0 border-[var(--line)] bg-[var(--surface)] py-0 shadow-none'>
+    <Card className='h-full gap-0 border-(--line) bg-(--surface) py-0 shadow-none'>
       <CardContent className='flex h-full flex-col gap-2 px-4 py-3'>
-        <div className='flex items-center gap-2 text-[var(--palm)]'>
-          <span className='inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--chip-bg)] ring-1 ring-[var(--chip-line)]'>
+        <div className='flex items-center gap-2 text-(--palm)'>
+          <span className='inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-(--chip-bg) ring-1 ring-(--chip-line)'>
             {icon}
           </span>
           <p className='text-muted-foreground text-[11px] font-medium tracking-[0.08em] uppercase'>
@@ -863,7 +861,7 @@ function MetricCard({
         </div>
         <div className='min-w-0'>
           <p
-            className='text-xl leading-none font-semibold break-words text-[var(--sea-ink)] tabular-nums'
+            className='text-xl leading-none font-semibold break-words text-(--sea-ink) tabular-nums'
             title={value}
           >
             {value}
@@ -901,8 +899,8 @@ function FilterChip({
       onClick={onClick}
       className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
         active
-          ? 'bg-[var(--palm)] text-white'
-          : 'border border-[var(--line)] bg-white/70 text-[var(--sea-ink-soft)] hover:border-[var(--palm)]/50'
+          ? 'bg-(--palm) text-white'
+          : 'border border-(--line) bg-white/70 text-(--sea-ink-soft) hover:border-(--palm)/50'
       }`}
     >
       {children}
@@ -962,7 +960,7 @@ function DashboardOverview({
 
   if (!dashboard) {
     return (
-      <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+      <Card className='border-(--line) bg-(--surface-strong)'>
         <CardContent className='text-muted-foreground flex items-center justify-center gap-3 px-5 py-16'>
           <Loader2 className='size-5 animate-spin' aria-hidden='true' />
           正在加载看板数据…
@@ -977,10 +975,10 @@ function DashboardOverview({
     const originAllowed = pageOrigin ? project.origins.includes(pageOrigin) : false
     return (
       <div className='space-y-4'>
-        <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+        <Card className='border-(--line) bg-(--surface-strong)'>
           <CardHeader>
-            <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
-              <Code2 className='size-5 text-[var(--palm)]' aria-hidden='true' />
+            <CardTitle className='flex items-center gap-2 text-(--sea-ink)'>
+              <Code2 className='size-5 text-(--palm)' aria-hidden='true' />
               接入向导：拿到第一个有效事件
             </CardTitle>
             <CardDescription className='leading-6'>
@@ -988,9 +986,9 @@ function DashboardOverview({
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
-            <ol className='space-y-3 text-sm leading-6 text-[var(--sea-ink-soft)]'>
-              <li className='rounded-xl border border-[var(--line)] bg-white/70 px-4 py-3'>
-                <p className='font-semibold text-[var(--sea-ink)]'>1. 确认 Origin 白名单</p>
+            <ol className='space-y-3 text-sm leading-6 text-(--sea-ink-soft)'>
+              <li className='rounded-xl border border-(--line) bg-white/70 px-4 py-3'>
+                <p className='font-semibold text-(--sea-ink)'>1. 确认 Origin 白名单</p>
                 <p className='mt-1'>
                   当前控制台 Origin： <code>{pageOrigin || '检测中…'}</code>{' '}
                   {pageOrigin ? (
@@ -1018,14 +1016,14 @@ function DashboardOverview({
                   </p>
                 </div>
                 {addOriginMessage ? (
-                  <p className='mt-2 text-xs text-[var(--palm)]'>{addOriginMessage}</p>
+                  <p className='mt-2 text-xs text-(--palm)'>{addOriginMessage}</p>
                 ) : null}
                 {originsError ? (
                   <p className='text-destructive mt-2 text-xs'>{originsError}</p>
                 ) : null}
               </li>
-              <li className='rounded-xl border border-[var(--line)] bg-white/70 px-4 py-3'>
-                <p className='font-semibold text-[var(--sea-ink)]'>2. 发送测试事件</p>
+              <li className='rounded-xl border border-(--line) bg-white/70 px-4 py-3'>
+                <p className='font-semibold text-(--sea-ink)'>2. 发送测试事件</p>
                 <p className='mt-1'>
                   复制「接入代码」到你的站点，或打开站内测试页（测试页 Origin 也须在白名单）。
                 </p>
@@ -1045,8 +1043,8 @@ function DashboardOverview({
                   </Button>
                 </div>
               </li>
-              <li className='rounded-xl border border-[var(--line)] bg-white/70 px-4 py-3'>
-                <p className='font-semibold text-[var(--sea-ink)]'>3. 确认入账</p>
+              <li className='rounded-xl border border-(--line) bg-white/70 px-4 py-3'>
+                <p className='font-semibold text-(--sea-ink)'>3. 确认入账</p>
                 <p className='mt-1'>
                   成功应返回 <code>accepted</code> / HTTP
                   202。聚合通常在数分钟内出现；可到「最近事件」调试页查看是否已落库。
@@ -1071,7 +1069,7 @@ function DashboardOverview({
           </CardContent>
         </Card>
         {project.lastRejectedReason && (
-          <Alert className='border-[var(--line)] bg-white/70'>
+          <Alert className='border-(--line) bg-white/70'>
             <CircleOff className='size-4' aria-hidden='true' />
             <AlertTitle>最近一次服务端拒绝</AlertTitle>
             <AlertDescription>
@@ -1156,14 +1154,14 @@ function DashboardOverview({
         ) : null}
 
         {dashboard.suggestedPolicies.length > 0 ? (
-          <Alert className='border-[var(--chip-line)] bg-[var(--chip-bg)]'>
-            <ShieldCheck className='size-4 text-[var(--palm)]' aria-hidden='true' />
+          <Alert className='border-(--chip-line) bg-(--chip-bg)'>
+            <ShieldCheck className='size-4 text-(--palm)' aria-hidden='true' />
             <AlertTitle>支持线建议（覆盖约 95% 该家族样本）</AlertTitle>
             <AlertDescription className='mt-2 flex flex-wrap gap-2'>
               {dashboard.suggestedPolicies.map((item) => (
                 <span
                   key={item.browserFamily}
-                  className='rounded-full border border-[var(--chip-line)] bg-white/80 px-2.5 py-1 text-xs font-medium text-[var(--sea-ink)]'
+                  className='rounded-full border border-(--chip-line) bg-white/80 px-2.5 py-1 text-xs font-medium text-(--sea-ink)'
                 >
                   {item.browserFamily} ≥{item.minimumSupportedMajor}
                 </span>
@@ -1182,7 +1180,7 @@ function DashboardOverview({
           </Alert>
         ) : null}
 
-        <Card className='gap-0 border-[var(--line)] bg-[var(--surface-strong)] py-0 shadow-none'>
+        <Card className='gap-0 border-(--line) bg-(--surface-strong) py-0 shadow-none'>
           <CardContent className='space-y-2.5 px-4 py-3'>
             <div className='flex flex-wrap items-center gap-x-4 gap-y-2'>
               <div className='flex items-center gap-1 rounded-full bg-white/70 p-1'>
@@ -1193,8 +1191,8 @@ function DashboardOverview({
                     onClick={() => setDays(option.value)}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                       days === option.value
-                        ? 'bg-[var(--palm)] text-white'
-                        : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
+                        ? 'bg-(--palm) text-white'
+                        : 'text-(--sea-ink-soft) hover:text-(--sea-ink)'
                     }`}
                   >
                     {option.label}
@@ -1209,8 +1207,8 @@ function DashboardOverview({
                     onClick={() => setInterval(option.value)}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                       interval === option.value
-                        ? 'bg-[var(--palm)] text-white'
-                        : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]'
+                        ? 'bg-(--palm) text-white'
+                        : 'text-(--sea-ink-soft) hover:text-(--sea-ink)'
                     }`}
                   >
                     {option.label}
@@ -1257,9 +1255,9 @@ function DashboardOverview({
         </Card>
 
         <div className='grid gap-4 lg:grid-cols-2'>
-          <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+          <Card className='border-(--line) bg-(--surface-strong)'>
             <CardHeader>
-              <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
+              <CardTitle className='flex items-center gap-2 text-(--sea-ink)'>
                 <Gauge className='size-5' aria-hidden='true' />
                 浏览器版本分布
               </CardTitle>
@@ -1278,7 +1276,7 @@ function DashboardOverview({
                 </p>
               )}
               {dashboard.unknownRate > 0 && (
-                <p className='text-muted-foreground mt-4 rounded-lg border border-[var(--line)] bg-white/60 px-3 py-2 text-xs'>
+                <p className='text-muted-foreground mt-4 rounded-lg border border-(--line) bg-white/60 px-3 py-2 text-xs'>
                   无法识别浏览器家族或主版本的样本占 {formatPercent(dashboard.unknownRate)}（
                   {dashboard.unknownDetectionEvents.toLocaleString('zh-CN')}{' '}
                   事件）。识别来源占比见上方摘要。
@@ -1287,9 +1285,9 @@ function DashboardOverview({
             </CardContent>
           </Card>
 
-          <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+          <Card className='border-(--line) bg-(--surface-strong)'>
             <CardHeader>
-              <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
+              <CardTitle className='flex items-center gap-2 text-(--sea-ink)'>
                 <MousePointerClick className='size-5' aria-hidden='true' />
                 事件趋势
               </CardTitle>

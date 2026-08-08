@@ -51,7 +51,7 @@ export function DistributionChart({
           <div key={`${item.browserFamily}\u0000${item.browserMajor ?? ''}`}>
             <div className='mb-1 flex items-baseline justify-between gap-3'>
               <div className='flex min-w-0 items-baseline gap-2'>
-                <span className='truncate text-sm font-medium text-[var(--sea-ink)]'>
+                <span className='truncate text-sm font-medium text-(--sea-ink)'>
                   {item.browserFamily}
                   {item.browserMajor !== null && (
                     <span className='text-muted-foreground'> {item.browserMajor}</span>
@@ -64,13 +64,13 @@ export function DistributionChart({
                 </span>
               </div>
               <div className='text-muted-foreground shrink-0 text-xs'>
-                <span className='font-semibold text-[var(--sea-ink)]'>
+                <span className='font-semibold text-(--sea-ink)'>
                   {item.eventCount.toLocaleString('zh-CN')}
                 </span>{' '}
                 · {(width * 100).toFixed(1)}%
               </div>
             </div>
-            <div className='h-2 overflow-hidden rounded-full bg-[var(--line)]/50'>
+            <div className='h-2 overflow-hidden rounded-full bg-(--line)/50'>
               <div
                 className={`h-full rounded-full ${style.bar}`}
                 style={{
@@ -151,11 +151,11 @@ export function TrendChart({
               y1={line.y}
               x2={width - paddingX}
               y2={line.y}
-              className='stroke-[var(--line)]/60'
+              className='stroke-(--line)/60'
               strokeWidth={1}
               strokeDasharray={index === 0 ? '0' : '3 4'}
             />
-            <text x={paddingX} y={line.y - 4} className='fill-[var(--sea-ink-soft)]' fontSize={10}>
+            <text x={paddingX} y={line.y - 4} className='fill-(--sea-ink-soft)' fontSize={10}>
               {line.label}
             </text>
           </g>
@@ -167,7 +167,7 @@ export function TrendChart({
           <path
             d={pointsPath}
             fill='none'
-            className='stroke-[var(--palm)]'
+            className='stroke-(--palm)'
             strokeWidth={2}
             strokeLinejoin='round'
             strokeLinecap='round'
@@ -182,7 +182,7 @@ export function TrendChart({
               cx={x}
               cy={y}
               r={index === points.length - 1 ? 4 : 2.5}
-              className='fill-[var(--palm)] stroke-white'
+              className='fill-(--palm) stroke-white'
               strokeWidth={1.5}
             >
               <title>
@@ -210,7 +210,7 @@ export function TrendChart({
                 x={x}
                 y={height - 8}
                 textAnchor={index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle'}
-                className='fill-[var(--sea-ink-soft)]'
+                className='fill-(--sea-ink-soft)'
                 fontSize={10}
               >
                 {label}
@@ -226,11 +226,11 @@ export function TrendChart({
       </svg>
       <div className='text-muted-foreground mt-1 flex items-center gap-5 text-xs'>
         <span className='flex items-center gap-1.5'>
-          <span className='inline-block size-2 rounded-full bg-[var(--palm)]' />
+          <span className='inline-block size-2 rounded-full bg-(--palm)' />
           事件数
         </span>
         <span className='flex items-center gap-1.5'>
-          <span className='inline-block size-2 rounded-sm border border-dashed border-[var(--sea-ink-soft)] bg-transparent' />
+          <span className='inline-block size-2 rounded-xs border border-dashed border-(--sea-ink-soft) bg-transparent' />
           悬停查看低于支持线占比
         </span>
       </div>

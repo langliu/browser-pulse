@@ -237,14 +237,12 @@ function Dashboard() {
   if (!dashboard.workspace) {
     return (
       <main className='mx-auto grid min-h-[calc(100vh-4rem)] max-w-5xl place-items-center px-5 py-16 sm:px-8'>
-        <Card className='w-full max-w-xl rounded-2xl border-[var(--line)] bg-[var(--surface-strong)] shadow-[0_24px_80px_rgba(23,58,64,0.12)]'>
+        <Card className='w-full max-w-xl rounded-2xl border-(--line) bg-(--surface-strong) shadow-[0_24px_80px_rgba(23,58,64,0.12)]'>
           <CardHeader className='gap-3 px-7 pt-7'>
-            <Badge className='mb-1 w-fit rounded-full bg-[var(--palm)] px-3 text-white hover:bg-[var(--palm)]'>
+            <Badge className='mb-1 w-fit rounded-full bg-(--palm) px-3 text-white hover:bg-(--palm)'>
               开始使用
             </Badge>
-            <CardTitle className='text-3xl tracking-tight text-[var(--sea-ink)]'>
-              创建工作区
-            </CardTitle>
+            <CardTitle className='text-3xl tracking-tight text-(--sea-ink)'>创建工作区</CardTitle>
             <CardDescription className='text-base leading-7'>
               工作区是独立的数据空间。你可以为不同团队或产品创建多个工作区。
             </CardDescription>
@@ -257,17 +255,17 @@ function Dashboard() {
     )
   }
   return (
-    <main className='mx-auto max-w-[1480px] px-5 py-12 sm:px-8 lg:px-10 lg:py-14'>
-      <div className='flex flex-col gap-8 border-b border-[var(--line)] pb-8 sm:flex-row sm:items-end sm:justify-between'>
+    <main className='mx-auto max-w-370 px-5 py-12 sm:px-8 lg:px-10 lg:py-14'>
+      <div className='flex flex-col gap-8 border-b border-(--line) pb-8 sm:flex-row sm:items-end sm:justify-between'>
         <div className='min-w-0'>
           <div className='mb-4 flex flex-wrap items-center gap-3'>
-            <span className='text-xs font-bold tracking-[0.16em] text-[var(--kicker)] uppercase'>
+            <span className='text-xs font-bold tracking-[0.16em] text-(--kicker) uppercase'>
               当前工作区
             </span>
             <Select value={dashboard.workspace.id} onValueChange={switchWorkspace}>
               <SelectTrigger
                 aria-label='当前工作区'
-                className='h-11 min-w-60 rounded-xl border-[var(--chip-line)] bg-[var(--surface-strong)] px-4 text-[var(--sea-ink)] shadow-[0_8px_24px_rgba(23,58,64,0.08)]'
+                className='h-11 min-w-60 rounded-xl border-(--chip-line) bg-(--surface-strong) px-4 text-(--sea-ink) shadow-[0_8px_24px_rgba(23,58,64,0.08)]'
               >
                 <SelectValue />
               </SelectTrigger>
@@ -282,19 +280,19 @@ function Dashboard() {
                 ))}
               </SelectContent>
             </Select>
-            <span className='rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1.5 text-xs font-medium text-[var(--sea-ink-soft)]'>
+            <span className='rounded-full border border-(--chip-line) bg-(--chip-bg) px-3 py-1.5 text-xs font-medium text-(--sea-ink-soft)'>
               共 {dashboard.workspaces.length} 个工作区
             </span>
           </div>
           <div className='flex flex-wrap items-center gap-3'>
-            <h1 className='font-serif text-4xl leading-[1.1] font-bold tracking-[-0.03em] text-[var(--sea-ink)] sm:text-5xl'>
+            <h1 className='font-serif text-4xl leading-[1.1] font-bold tracking-[-0.03em] text-(--sea-ink) sm:text-5xl'>
               {dashboard.workspace.name}
             </h1>
             <Button
               type='button'
               variant='outline'
               size='sm'
-              className='h-8 rounded-full border-[var(--chip-line)] bg-[var(--surface-strong)] px-3 text-[var(--sea-ink)]'
+              className='h-8 rounded-full border-(--chip-line) bg-(--surface-strong) px-3 text-(--sea-ink)'
               onClick={() => {
                 setWorkspaceEditError(null)
                 setDeletingWorkspace(false)
@@ -306,15 +304,15 @@ function Dashboard() {
               工作区设置
             </Button>
           </div>
-          <p className='mt-3 max-w-2xl text-base leading-7 text-[var(--sea-ink-soft)]'>
+          <p className='mt-3 max-w-2xl text-base leading-7 text-(--sea-ink-soft)'>
             工作区彼此隔离。可在此创建项目、配置 Origin，再复制内联采集代码。
           </p>
         </div>
-        <div className='flex flex-wrap items-center gap-3 sm:pb-1'>
+        <div className='flex flex-wrap items-center gap-2.5 sm:pb-1'>
           <Button
             type='button'
             variant='outline'
-            className='h-11 rounded-xl border-[var(--chip-line)] bg-[var(--surface-strong)] px-4 text-[var(--sea-ink)] shadow-[0_8px_22px_rgba(23,58,64,0.08)] hover:border-[var(--lagoon-deep)] hover:bg-[var(--chip-bg)]'
+            className='h-11 rounded-2xl border-(--chip-line) bg-(--surface-strong) px-4 text-(--sea-ink) shadow-[0_8px_22px_rgba(23,58,64,0.08)] hover:border-(--lagoon-deep) hover:bg-(--chip-bg)'
             onClick={() => {
               setError(null)
               setCreatingWorkspace(true)
@@ -322,62 +320,113 @@ function Dashboard() {
           >
             <Plus className='size-4' aria-hidden='true' />
             新建工作区
-            <span className='text-muted-foreground ml-1 text-xs font-normal'>
-              {dashboard.workspaces.length}/20
-            </span>
           </Button>
           <Button
             type='button'
-            className='h-11 rounded-xl bg-[var(--sea-ink)] px-4 text-white shadow-[0_10px_24px_rgba(23,58,64,0.18)] hover:bg-[var(--lagoon-deep)]'
+            className='h-11 rounded-2xl bg-(--sea-ink) px-4 text-white shadow-[0_10px_24px_rgba(23,58,64,0.18)] hover:bg-(--lagoon-deep)'
             onClick={openCreateProject}
           >
             <Plus className='size-4' aria-hidden='true' />
             新建项目
-            <span className='ml-1 text-xs font-normal text-white/70'>
-              {dashboard.projects.length}/50
-            </span>
           </Button>
-          <Card className='min-w-40 rounded-2xl border-[var(--line)] bg-[var(--surface-strong)] py-4 shadow-[0_14px_30px_rgba(23,58,64,0.08)]'>
-            <CardContent className='flex items-center gap-3 px-4'>
-              <span className='flex size-10 items-center justify-center rounded-xl bg-[var(--sand)] text-[var(--palm)]'>
-                <FolderKanban className='size-5' aria-hidden='true' />
+          <div className='flex h-11 items-center gap-0 overflow-hidden rounded-2xl border border-(--line) bg-(--surface-strong) shadow-[0_10px_28px_rgba(23,58,64,0.08)]'>
+            <div
+              className='flex h-full items-center gap-2.5 px-3.5'
+              title={`工作区 ${dashboard.workspaces.length} / 20`}
+            >
+              <span className='flex size-8 items-center justify-center rounded-xl bg-(--sand) text-(--palm)'>
+                <FolderKanban className='size-4' aria-hidden='true' />
               </span>
-              <div>
-                <p className='text-2xl leading-none font-semibold'>{dashboard.projects.length}</p>
-                <p className='text-muted-foreground mt-1 text-xs'>项目</p>
+              <div className='leading-none'>
+                <p className='text-[13px] font-semibold tracking-tight text-(--sea-ink) tabular-nums'>
+                  {dashboard.workspaces.length}
+                  <span className='text-muted-foreground font-medium'>/20</span>
+                </p>
+                <p className='text-muted-foreground mt-1 text-[10px] tracking-wide'>工作区</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <Separator orientation='vertical' className='h-7 bg-(--line)' />
+            <div
+              className='flex h-full items-center gap-2.5 px-3.5'
+              title={`当前工作区项目 ${dashboard.projects.length} / 50`}
+            >
+              <span className='flex size-8 items-center justify-center rounded-xl bg-(--sand) text-(--palm)'>
+                <Radio className='size-4' aria-hidden='true' />
+              </span>
+              <div className='leading-none'>
+                <p className='text-[13px] font-semibold tracking-tight text-(--sea-ink) tabular-nums'>
+                  {dashboard.projects.length}
+                  <span className='text-muted-foreground font-medium'>/50</span>
+                </p>
+                <p className='text-muted-foreground mt-1 text-[10px] tracking-wide'>项目</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      {creatingWorkspace && (
-        <Card className='mt-8 rounded-2xl border-[var(--line)] bg-[var(--surface-strong)] shadow-[0_18px_46px_rgba(23,58,64,0.08)]'>
-          <CardHeader className='flex-row items-start justify-between gap-4 px-7 pt-7'>
-            <div>
-              <CardTitle className='text-lg tracking-tight text-[var(--sea-ink)]'>
-                新建工作区
-              </CardTitle>
-              <CardDescription className='mt-2 leading-6'>
-                新工作区创建后会自动切换到该工作区。
-              </CardDescription>
+      <Dialog
+        open={creatingWorkspace}
+        onOpenChange={(open) => {
+          setCreatingWorkspace(open)
+          if (!open) setError(null)
+        }}
+      >
+        <DialogContent className='max-w-md'>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2'>
+              <Plus className='size-4 text-(--palm)' aria-hidden='true' />
+              新建工作区
+            </DialogTitle>
+            <DialogDescription>
+              工作区彼此隔离。创建后会自动切换到新工作区（账号最多 20 个）。
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            key={creatingWorkspace ? 'workspace-open' : 'workspace-closed'}
+            className='space-y-4'
+            onSubmit={submitWorkspace}
+          >
+            <div className='space-y-2'>
+              <Label
+                htmlFor='create-workspace-name'
+                className='text-sm font-semibold text-(--sea-ink)'
+              >
+                工作区名称
+              </Label>
+              <Input
+                id='create-workspace-name'
+                name='name'
+                placeholder='例如：海风前端团队'
+                minLength={2}
+                maxLength={60}
+                className='h-11 rounded-xl border-(--line) bg-white/65 px-4 text-(--sea-ink) shadow-none placeholder:text-(--sea-ink-soft)/70 focus-visible:border-(--lagoon-deep) focus-visible:ring-(--lagoon)/20'
+                autoFocus
+                required
+              />
             </div>
-            <Button
-              type='button'
-              variant='ghost'
-              size='sm'
-              onClick={() => {
-                setCreatingWorkspace(false)
-                setError(null)
-              }}
-            >
-              取消
-            </Button>
-          </CardHeader>
-          <CardContent className='px-7 pb-7'>
-            <WorkspaceForm onSubmit={submitWorkspace} submitting={submitting} error={error} />
-          </CardContent>
-        </Card>
-      )}
+            {error && (
+              <Alert variant='destructive' className='rounded-xl'>
+                <AlertTitle>创建失败</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <DialogFooter>
+              <Button
+                type='button'
+                variant='outline'
+                disabled={submitting}
+                onClick={() => setCreatingWorkspace(false)}
+              >
+                取消
+              </Button>
+              <Button type='submit' disabled={submitting}>
+                <Plus className='size-4' aria-hidden='true' />
+                {submitting ? '正在创建…' : '创建工作区'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={editingWorkspace}
@@ -402,7 +451,7 @@ function Dashboard() {
               <div className='space-y-2'>
                 <Label
                   htmlFor='edit-workspace-name'
-                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                  className='text-sm font-semibold text-(--sea-ink)'
                 >
                   工作区名称
                 </Label>
@@ -412,7 +461,7 @@ function Dashboard() {
                   defaultValue={dashboard.workspace.name}
                   minLength={2}
                   maxLength={60}
-                  className='h-11 rounded-xl border-[var(--line)] bg-white/65 px-4 text-[var(--sea-ink)] shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                  className='h-11 rounded-xl border-(--line) bg-white/65 px-4 text-(--sea-ink) shadow-none focus-visible:border-(--lagoon-deep) focus-visible:ring-(--lagoon)/20'
                   autoFocus
                   required
                 />
@@ -468,7 +517,7 @@ function Dashboard() {
               <div className='space-y-2'>
                 <Label
                   htmlFor='delete-workspace-confirm'
-                  className='text-sm font-semibold text-[var(--sea-ink)]'
+                  className='text-sm font-semibold text-(--sea-ink)'
                 >
                   输入工作区名称 <code>{dashboard.workspace.name}</code> 以确认
                 </Label>
@@ -514,10 +563,10 @@ function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      <Card className='mt-8 rounded-2xl border-[var(--line)] bg-[var(--surface-strong)] shadow-[0_18px_46px_rgba(23,58,64,0.08)]'>
+      <Card className='mt-8 rounded-2xl border-(--line) bg-(--surface-strong) shadow-[0_18px_46px_rgba(23,58,64,0.08)]'>
         <CardHeader className='gap-3 px-7 pt-7'>
-          <CardTitle className='flex items-center gap-3 text-lg tracking-tight text-[var(--sea-ink)]'>
-            <span className='flex size-9 items-center justify-center rounded-xl bg-[var(--sand)] text-[var(--palm)]'>
+          <CardTitle className='flex items-center gap-3 text-lg tracking-tight text-(--sea-ink)'>
+            <span className='flex size-9 items-center justify-center rounded-xl bg-(--sand) text-(--palm)'>
               <Radio className='size-5' aria-hidden='true' />
             </span>
             项目
@@ -528,11 +577,11 @@ function Dashboard() {
         </CardHeader>
         <CardContent className='px-7 pb-7'>
           {dashboard.projects.length === 0 ? (
-            <div className='flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--line)] bg-white/45 px-6 py-10 text-center'>
-              <span className='flex size-14 items-center justify-center rounded-2xl bg-[var(--sand)] text-[var(--sea-ink-soft)]'>
+            <div className='flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-(--line) bg-white/45 px-6 py-10 text-center'>
+              <span className='flex size-14 items-center justify-center rounded-2xl bg-(--sand) text-(--sea-ink-soft)'>
                 <FolderKanban className='size-7' aria-hidden='true' />
               </span>
-              <p className='mt-5 text-base font-semibold text-[var(--sea-ink)]'>还没有项目</p>
+              <p className='mt-5 text-base font-semibold text-(--sea-ink)'>还没有项目</p>
               <p className='text-muted-foreground mt-2 max-w-xs text-sm leading-6'>
                 点击右上角「新建项目」，配置 Origin 与最低支持版本后即可开始采集。
               </p>
@@ -549,7 +598,7 @@ function Dashboard() {
                   >
                     <div className='min-w-0'>
                       <div className='flex items-center gap-2'>
-                        <p className='truncate font-medium text-[var(--sea-ink)]'>{project.name}</p>
+                        <p className='truncate font-medium text-(--sea-ink)'>{project.name}</p>
                         <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
                           {project.status === 'active' ? '采集中' : '已停用'}
                         </Badge>
@@ -582,7 +631,7 @@ function Dashboard() {
         <DialogContent className='max-h-[min(90vh,52rem)] max-w-2xl overflow-y-auto'>
           <DialogHeader>
             <DialogTitle className='flex items-center gap-2'>
-              <Plus className='size-4 text-[var(--palm)]' aria-hidden='true' />
+              <Plus className='size-4 text-(--palm)' aria-hidden='true' />
               新建项目
             </DialogTitle>
             <DialogDescription>
@@ -595,7 +644,7 @@ function Dashboard() {
             onSubmit={submitProject}
           >
             <div className='space-y-2'>
-              <Label htmlFor='project-name' className='text-sm font-semibold text-[var(--sea-ink)]'>
+              <Label htmlFor='project-name' className='text-sm font-semibold text-(--sea-ink)'>
                 项目名称
               </Label>
               <Input
@@ -604,16 +653,13 @@ function Dashboard() {
                 placeholder='例如：营销官网'
                 minLength={2}
                 maxLength={80}
-                className='h-11 rounded-xl border-[var(--line)] bg-white/65 px-4 text-[var(--sea-ink)] shadow-none placeholder:text-[var(--sea-ink-soft)]/70 focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                className='h-11 rounded-xl border-(--line) bg-white/65 px-4 text-(--sea-ink) shadow-none placeholder:text-(--sea-ink-soft)/70 focus-visible:border-(--lagoon-deep) focus-visible:ring-(--lagoon)/20'
                 autoFocus
                 required
               />
             </div>
             <div className='space-y-2'>
-              <Label
-                htmlFor='project-origins'
-                className='text-sm font-semibold text-[var(--sea-ink)]'
-              >
+              <Label htmlFor='project-origins' className='text-sm font-semibold text-(--sea-ink)'>
                 允许的 Origin
               </Label>
               <Textarea
@@ -621,23 +667,18 @@ function Dashboard() {
                 name='origins'
                 placeholder={'https://www.example.com\nhttps://staging.example.com'}
                 rows={4}
-                className='min-h-28 resize-y rounded-xl border-[var(--line)] bg-white/65 px-4 py-3 text-[var(--sea-ink)] shadow-none placeholder:text-[var(--sea-ink-soft)]/70 focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                className='min-h-28 resize-y rounded-xl border-(--line) bg-white/65 px-4 py-3 text-(--sea-ink) shadow-none placeholder:text-(--sea-ink-soft)/70 focus-visible:border-(--lagoon-deep) focus-visible:ring-(--lagoon)/20'
                 required
               />
-              <p className='rounded-lg border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-2 text-xs leading-5 text-[var(--sea-ink-soft)]'>
+              <p className='rounded-lg border border-(--chip-line) bg-(--chip-bg) px-3 py-2 text-xs leading-5 text-(--sea-ink-soft)'>
                 仅接受 HTTPS；本地开发可使用 http://localhost。一行一个。
               </p>
             </div>
             <div className='space-y-3'>
               <div className='flex items-start gap-2'>
-                <ShieldCheck
-                  className='mt-0.5 size-4 shrink-0 text-[var(--palm)]'
-                  aria-hidden='true'
-                />
+                <ShieldCheck className='mt-0.5 size-4 shrink-0 text-(--palm)' aria-hidden='true' />
                 <div>
-                  <Label className='text-sm font-semibold text-[var(--sea-ink)]'>
-                    最低支持版本
-                  </Label>
+                  <Label className='text-sm font-semibold text-(--sea-ink)'>最低支持版本</Label>
                   <p className='text-muted-foreground mt-1 text-xs leading-5'>
                     可选。为浏览器家族填写整数主版本阈值；留空表示不纳入策略分母。
                   </p>
@@ -647,11 +688,11 @@ function Dashboard() {
                 {BROWSER_FAMILIES.map((family) => (
                   <div
                     key={family}
-                    className='flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-white/60 px-3 py-2.5'
+                    className='flex items-center justify-between gap-3 rounded-xl border border-(--line) bg-white/60 px-3 py-2.5'
                   >
                     <Label
                       htmlFor={`create-policy-${family}`}
-                      className='text-sm font-medium text-[var(--sea-ink)]'
+                      className='text-sm font-medium text-(--sea-ink)'
                     >
                       {family}
                     </Label>
@@ -662,7 +703,7 @@ function Dashboard() {
                       min={1}
                       max={999}
                       placeholder='未配置'
-                      className='h-9 w-24 rounded-lg border-[var(--line)] bg-white/80 text-right shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+                      className='h-9 w-24 rounded-lg border-(--line) bg-white/80 text-right shadow-none focus-visible:border-(--lagoon-deep) focus-visible:ring-(--lagoon)/20'
                     />
                   </div>
                 ))}
@@ -707,7 +748,7 @@ function WorkspaceForm({
   return (
     <form className='space-y-4' onSubmit={onSubmit}>
       <div className='space-y-2'>
-        <Label htmlFor='workspace-name' className='text-sm font-semibold text-[var(--sea-ink)]'>
+        <Label htmlFor='workspace-name' className='text-sm font-semibold text-(--sea-ink)'>
           工作区名称
         </Label>
         <Input
@@ -716,7 +757,7 @@ function WorkspaceForm({
           placeholder='例如：海风前端团队'
           minLength={2}
           maxLength={60}
-          className='h-11 rounded-xl border-[var(--line)] bg-white/65 px-4 text-[var(--sea-ink)] shadow-none placeholder:text-[var(--sea-ink-soft)]/70 focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-[var(--lagoon)]/20'
+          className='h-11 rounded-xl border-(--line) bg-white/65 px-4 text-(--sea-ink) shadow-none placeholder:text-(--sea-ink-soft)/70 focus-visible:border-(--lagoon-deep) focus-visible:ring-(--lagoon)/20'
           autoFocus
           required
         />
@@ -729,7 +770,7 @@ function WorkspaceForm({
       )}
       <Button
         type='submit'
-        className='h-11 rounded-xl bg-[var(--sea-ink)] text-white shadow-[0_10px_24px_rgba(23,58,64,0.18)] hover:bg-[var(--lagoon-deep)]'
+        className='h-11 rounded-xl bg-(--sea-ink) text-white shadow-[0_10px_24px_rgba(23,58,64,0.18)] hover:bg-(--lagoon-deep)'
         disabled={submitting}
       >
         {submitting ? '正在创建…' : '创建工作区'}

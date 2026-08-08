@@ -168,29 +168,29 @@ function CollectorTestPage() {
             返回首页
           </Link>
         </Button>
-        <div className='flex items-center gap-2 text-sm text-[var(--sea-ink-soft)]'>
-          <Activity className='size-4 text-[var(--palm)]' aria-hidden='true' />
+        <div className='flex items-center gap-2 text-sm text-(--sea-ink-soft)'>
+          <Activity className='size-4 text-(--palm)' aria-hidden='true' />
           Browser Pulse
         </div>
       </div>
 
       <div className='mb-8'>
-        <p className='text-xs font-bold tracking-[0.16em] text-[var(--kicker)] uppercase'>
+        <p className='text-xs font-bold tracking-[0.16em] text-(--kicker) uppercase'>
           Collector Test
         </p>
-        <h1 className='mt-2 font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
+        <h1 className='mt-2 font-serif text-4xl font-bold tracking-tight text-(--sea-ink)'>
           采集代码测试
         </h1>
-        <p className='mt-3 max-w-2xl text-base leading-7 text-[var(--sea-ink-soft)]'>
+        <p className='mt-3 max-w-2xl text-base leading-7 text-(--sea-ink-soft)'>
           填入项目详情中的公开采集键，显式调用与生产接入代码相同的检测与上报逻辑。同一组地址 +
           密钥在本页只会发送一次请求；改配置后会重建采集实例。
         </p>
       </div>
 
-      <Card className='rounded-2xl border-[var(--line)] bg-[var(--surface-strong)] shadow-[0_18px_46px_rgba(23,58,64,0.08)]'>
+      <Card className='rounded-2xl border-(--line) bg-(--surface-strong) shadow-[0_18px_46px_rgba(23,58,64,0.08)]'>
         <CardHeader className='gap-3'>
-          <CardTitle className='flex items-center gap-2 text-lg text-[var(--sea-ink)]'>
-            <FlaskConical className='size-5 text-[var(--palm)]' aria-hidden='true' />
+          <CardTitle className='flex items-center gap-2 text-lg text-(--sea-ink)'>
+            <FlaskConical className='size-5 text-(--palm)' aria-hidden='true' />
             测试配置
           </CardTitle>
           <CardDescription className='leading-6'>
@@ -200,10 +200,7 @@ function CollectorTestPage() {
         </CardHeader>
         <CardContent className='space-y-5'>
           <div className='space-y-2'>
-            <Label
-              htmlFor='collector-origin'
-              className='text-sm font-semibold text-[var(--sea-ink)]'
-            >
+            <Label htmlFor='collector-origin' className='text-sm font-semibold text-(--sea-ink)'>
               采集服务地址
             </Label>
             <Input
@@ -228,7 +225,7 @@ function CollectorTestPage() {
           </div>
 
           <div className='space-y-2'>
-            <Label htmlFor='collector-key' className='text-sm font-semibold text-[var(--sea-ink)]'>
+            <Label htmlFor='collector-key' className='text-sm font-semibold text-(--sea-ink)'>
               公开采集键
             </Label>
             <Input
@@ -262,9 +259,9 @@ function CollectorTestPage() {
           </Button>
 
           <div className='space-y-2'>
-            <p className='text-sm font-semibold text-[var(--sea-ink)]'>结果</p>
+            <p className='text-sm font-semibold text-(--sea-ink)'>结果</p>
             <pre
-              className='min-h-28 overflow-auto rounded-xl border border-[var(--line)] bg-[#102327] p-4 text-xs leading-6 text-[#d7ece8]'
+              className='min-h-28 overflow-auto rounded-xl border border-(--line) bg-[#102327] p-4 text-xs leading-6 text-[#d7ece8]'
               aria-live='polite'
             >
               {resultText}
@@ -273,14 +270,14 @@ function CollectorTestPage() {
 
           {preview ? (
             <div className='space-y-2'>
-              <p className='text-sm font-semibold text-[var(--sea-ink)]'>当前页检测预览</p>
-              <pre className='overflow-auto rounded-xl border border-[var(--line)] bg-white/60 p-4 text-xs leading-6 text-[var(--sea-ink)]'>
+              <p className='text-sm font-semibold text-(--sea-ink)'>当前页检测预览</p>
+              <pre className='overflow-auto rounded-xl border border-(--line) bg-white/60 p-4 text-xs leading-6 text-(--sea-ink)'>
                 {JSON.stringify(preview, null, 2)}
               </pre>
             </div>
           ) : null}
 
-          <Alert className='rounded-xl border-[var(--line)] bg-white/60'>
+          <Alert className='rounded-xl border-(--line) bg-white/60'>
             <AlertTitle>隐私与用途</AlertTitle>
             <AlertDescription className='leading-6'>
               此页不会创建访客 ID 或 Cookie，也不会上传原始 User-Agent。仅用 sessionStorage

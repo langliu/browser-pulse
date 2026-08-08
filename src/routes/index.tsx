@@ -41,52 +41,52 @@ function Home() {
     <main className='mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-8 lg:px-10'>
       <header className='flex items-center justify-between'>
         <div className='flex items-center gap-3'>
-          <div className='flex size-10 items-center justify-center rounded-xl bg-[var(--sea-ink)] text-white shadow-sm'>
+          <div className='flex size-10 items-center justify-center rounded-xl bg-(--sea-ink) text-white shadow-xs'>
             <Activity className='size-5' aria-hidden='true' />
           </div>
           <div>
-            <p className='font-semibold tracking-tight text-[var(--sea-ink)]'>Browser Pulse</p>
-            <p className='text-xs text-[var(--sea-ink-soft)]'>浏览器脉搏</p>
+            <p className='font-semibold tracking-tight text-(--sea-ink)'>Browser Pulse</p>
+            <p className='text-xs text-(--sea-ink-soft)'>浏览器脉搏</p>
           </div>
         </div>
-        <Badge variant='secondary' className='border border-[var(--chip-line)] bg-[var(--chip-bg)]'>
+        <Badge variant='secondary' className='border border-(--chip-line) bg-(--chip-bg)'>
           MVP
         </Badge>
       </header>
 
       <section className='grid flex-1 items-center gap-10 py-14 lg:grid-cols-[1.2fr_0.8fr] lg:py-20'>
         <div className='max-w-3xl'>
-          <Badge className='mb-6 bg-[var(--palm)] text-white hover:bg-[var(--palm)]'>
+          <Badge className='mb-6 bg-(--palm) text-white hover:bg-(--palm)'>
             为前端与 QA 团队而生
           </Badge>
-          <h1 className='font-serif text-5xl leading-[1.04] font-bold tracking-[-0.045em] text-[var(--sea-ink)] sm:text-6xl lg:text-7xl'>
+          <h1 className='font-serif text-5xl leading-[1.04] font-bold tracking-[-0.045em] text-(--sea-ink) sm:text-6xl lg:text-7xl'>
             用真实样本，
             <br />
             决定浏览器支持线。
           </h1>
-          <p className='mt-7 max-w-2xl text-lg leading-8 text-[var(--sea-ink-soft)] sm:text-xl'>
+          <p className='mt-7 max-w-2xl text-lg leading-8 text-(--sea-ink-soft) sm:text-xl'>
             只采集最小匿名浏览器环境字段，查看主版本分布、变化趋势，以及低于最低支持线的样本占比。
           </p>
 
-          <div className='mt-8 grid max-w-2xl gap-3 text-sm text-[var(--sea-ink-soft)] sm:grid-cols-3'>
+          <div className='mt-8 grid max-w-2xl gap-3 text-sm text-(--sea-ink-soft) sm:grid-cols-3'>
             {['不生成访客 ID', '不保存原始 UA', '不设置第三方 Cookie'].map((item) => (
               <div
                 key={item}
-                className='flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5'
+                className='flex items-center gap-2 rounded-xl border border-(--line) bg-(--surface) px-3 py-2.5'
               >
-                <ShieldCheck className='size-4 shrink-0 text-[var(--palm)]' aria-hidden='true' />
+                <ShieldCheck className='size-4 shrink-0 text-(--palm)' aria-hidden='true' />
                 {item}
               </div>
             ))}
           </div>
         </div>
 
-        <Card className='border-[var(--line)] bg-[var(--surface-strong)] shadow-[0_24px_80px_rgba(23,58,64,0.12)] backdrop-blur-xl'>
+        <Card className='border-(--line) bg-(--surface-strong) shadow-[0_24px_80px_rgba(23,58,64,0.12)] backdrop-blur-xl'>
           <CardHeader className='space-y-3'>
-            <div className='flex size-11 items-center justify-center rounded-xl border border-[var(--line)] bg-white/70'>
-              <Globe className='size-5 text-[var(--sea-ink)]' aria-hidden='true' />
+            <div className='flex size-11 items-center justify-center rounded-xl border border-(--line) bg-white/70'>
+              <Globe className='size-5 text-(--sea-ink)' aria-hidden='true' />
             </div>
-            <CardTitle className='text-2xl text-[var(--sea-ink)]'>开始查看真实版本分布</CardTitle>
+            <CardTitle className='text-2xl text-(--sea-ink)'>开始查看真实版本分布</CardTitle>
             <CardDescription className='leading-6'>
               使用 Google 登录，然后创建工作区与第一个项目。
             </CardDescription>
@@ -133,9 +133,9 @@ function Home() {
         </Card>
       </section>
 
-      <footer className='site-footer mt-auto flex flex-wrap items-center justify-between gap-3 py-6 text-xs text-[var(--sea-ink-soft)]'>
+      <footer className='site-footer mt-auto flex flex-wrap items-center justify-between gap-3 py-6 text-xs text-(--sea-ink-soft)'>
         <span>样本不是 UV。不生成访客 ID，不保存原始 UA。</span>
-        <Link to='/privacy' className='text-[var(--palm)] underline-offset-4 hover:underline'>
+        <Link to='/privacy' className='text-(--palm) underline-offset-4 hover:underline'>
           隐私与字段清单
         </Link>
       </footer>

@@ -171,10 +171,10 @@ function ProjectEventsPage() {
             {project.status === 'active' ? '采集中' : '已停用'}
           </Badge>
         </div>
-        <h1 className='font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
+        <h1 className='font-serif text-4xl font-bold tracking-tight text-(--sea-ink)'>
           {project.name} · 最近事件（调试）
         </h1>
-        <p className='mt-2 max-w-2xl text-[var(--sea-ink-soft)]'>
+        <p className='mt-2 max-w-2xl text-(--sea-ink-soft)'>
           仅供接入排障：查看保留期内最近原始事件是否到达。这是页面加载样本，不是访客/用户列表；不包含
           IP、URL、原始 User-Agent 或任何稳定标识，也不支持导出。
         </p>
@@ -186,11 +186,11 @@ function ProjectEventsPage() {
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       ) : (
-        <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+        <Card className='border-(--line) bg-(--surface-strong)'>
           <CardHeader>
             <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
               <div>
-                <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
+                <CardTitle className='flex items-center gap-2 text-(--sea-ink)'>
                   <Radio className='size-5' aria-hidden='true' />
                   最近原始事件
                 </CardTitle>
@@ -198,7 +198,7 @@ function ProjectEventsPage() {
                   {rangeLabel} · 按接收时间倒序 · 超过 30 天的事件会被清理
                 </CardDescription>
               </div>
-              <div className='flex items-center gap-1.5 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] p-1 shadow-[inset_0_1px_0_var(--inset-glint)]'>
+              <div className='flex items-center gap-1.5 rounded-full border border-(--chip-line) bg-(--chip-bg) p-1 shadow-[inset_0_1px_0_var(--inset-glint)]'>
                 <Button
                   type='button'
                   variant='ghost'
@@ -207,7 +207,7 @@ function ProjectEventsPage() {
                   onClick={() => setRefreshKey((current) => current + 1)}
                   aria-label='刷新最近事件'
                   title='刷新'
-                  className='size-7 rounded-full text-[var(--sea-ink-soft)] hover:bg-white/80 hover:text-[var(--sea-ink)] disabled:opacity-60'
+                  className='size-7 rounded-full text-(--sea-ink-soft) hover:bg-white/80 hover:text-(--sea-ink) disabled:opacity-60'
                 >
                   <RefreshCw
                     className={`size-3.5 ${loading ? 'animate-spin' : ''}`}
@@ -215,11 +215,11 @@ function ProjectEventsPage() {
                   />
                 </Button>
                 {events ? (
-                  <span className='min-w-12 pr-2.5 text-right text-xs font-medium tracking-wide text-[var(--sea-ink-soft)] tabular-nums'>
+                  <span className='min-w-12 pr-2.5 text-right text-xs font-medium tracking-wide text-(--sea-ink-soft) tabular-nums'>
                     共 {events.totalRows.toLocaleString('zh-CN')} 条
                   </span>
                 ) : (
-                  <span className='min-w-12 pr-2.5 text-right text-xs text-[var(--sea-ink-soft)]'>
+                  <span className='min-w-12 pr-2.5 text-right text-xs text-(--sea-ink-soft)'>
                     …
                   </span>
                 )}
@@ -233,7 +233,7 @@ function ProjectEventsPage() {
                 <AlertDescription>{loadError}</AlertDescription>
               </Alert>
             ) : null}
-            <div className='grid gap-3 rounded-xl border border-[var(--line)] bg-white/60 p-4 sm:grid-cols-2 lg:grid-cols-4'>
+            <div className='grid gap-3 rounded-xl border border-(--line) bg-white/60 p-4 sm:grid-cols-2 lg:grid-cols-4'>
               <FilterSelect
                 label='日期范围'
                 value={String(days)}
@@ -272,19 +272,19 @@ function ProjectEventsPage() {
                 正在加载最近事件…
               </div>
             ) : events.rows.length === 0 ? (
-              <div className='rounded-xl border border-dashed border-[var(--line)] bg-white/40 px-6 py-16 text-center'>
+              <div className='rounded-xl border border-dashed border-(--line) bg-white/40 px-6 py-16 text-center'>
                 <Table2 className='text-muted-foreground mx-auto size-8' aria-hidden='true' />
-                <p className='mt-4 font-medium text-[var(--sea-ink)]'>暂无匹配的原始事件</p>
+                <p className='mt-4 font-medium text-(--sea-ink)'>暂无匹配的原始事件</p>
                 <p className='text-muted-foreground mt-1 text-sm'>
                   尝试扩大日期范围或清除筛选条件。
                 </p>
               </div>
             ) : (
               <>
-                <div className='overflow-x-auto rounded-xl border border-[var(--line)]'>
-                  <table className='w-full min-w-[1080px] text-left text-sm'>
+                <div className='overflow-x-auto rounded-xl border border-(--line)'>
+                  <table className='w-full min-w-270 text-left text-sm'>
                     <caption className='sr-only'>项目单条采集事件列表</caption>
-                    <thead className='bg-white/70 text-xs tracking-wide text-[var(--sea-ink-soft)] uppercase'>
+                    <thead className='bg-white/70 text-xs tracking-wide text-(--sea-ink-soft) uppercase'>
                       <tr>
                         <th scope='col' className='px-4 py-3 font-medium'>
                           接收时间
@@ -309,34 +309,32 @@ function ProjectEventsPage() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className='divide-y divide-[var(--line)]'>
+                    <tbody className='divide-y divide-(--line)'>
                       {events.rows.map((row) => (
                         <tr
                           key={row.ingestId}
                           className='bg-white/35 transition-colors hover:bg-white/75'
                         >
-                          <td className='px-4 py-3 font-medium whitespace-nowrap text-[var(--sea-ink)]'>
+                          <td className='px-4 py-3 font-medium whitespace-nowrap text-(--sea-ink)'>
                             {formatCollectedAt(row.collectedAt, events.timeZone)}
                           </td>
-                          <td className='px-4 py-3 text-[var(--sea-ink-soft)]'>
-                            <span className='font-medium text-[var(--sea-ink)]'>
+                          <td className='px-4 py-3 text-(--sea-ink-soft)'>
+                            <span className='font-medium text-(--sea-ink)'>
                               {row.browserFamily}
                             </span>
                             <span className='text-muted-foreground ml-1'>
                               {row.browserMajor || '未知版本'}
                             </span>
                           </td>
-                          <td className='px-4 py-3 text-[var(--sea-ink-soft)]'>{row.osFamily}</td>
-                          <td className='px-4 py-3 text-[var(--sea-ink-soft)]'>
-                            {row.deviceClass}
-                          </td>
-                          <td className='px-4 py-3 text-[var(--sea-ink-soft)]'>
+                          <td className='px-4 py-3 text-(--sea-ink-soft)'>{row.osFamily}</td>
+                          <td className='px-4 py-3 text-(--sea-ink-soft)'>{row.deviceClass}</td>
+                          <td className='px-4 py-3 text-(--sea-ink-soft)'>
                             {formatDetectionSource(row.detectionSource)}
                           </td>
-                          <td className='px-4 py-3 font-mono text-xs text-[var(--sea-ink-soft)]'>
+                          <td className='px-4 py-3 font-mono text-xs text-(--sea-ink-soft)'>
                             {row.snippetVersion}
                           </td>
-                          <td className='px-4 py-3 font-mono text-xs text-[var(--sea-ink-soft)]'>
+                          <td className='px-4 py-3 font-mono text-xs text-(--sea-ink-soft)'>
                             {row.ingestId}
                           </td>
                         </tr>

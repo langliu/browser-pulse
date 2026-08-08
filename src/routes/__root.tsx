@@ -33,11 +33,9 @@ function NotFound() {
   return (
     <main className='grid min-h-screen place-items-center px-5'>
       <div className='text-center'>
-        <p className='text-sm font-medium text-[var(--palm)]'>404</p>
-        <h1 className='mt-3 font-serif text-4xl font-bold text-[var(--sea-ink)]'>
-          这里没有浏览器脉搏
-        </h1>
-        <p className='mt-3 text-[var(--sea-ink-soft)]'>页面不存在，或链接已经失效。</p>
+        <p className='text-sm font-medium text-(--palm)'>404</p>
+        <h1 className='mt-3 font-serif text-4xl font-bold text-(--sea-ink)'>这里没有浏览器脉搏</h1>
+        <p className='mt-3 text-(--sea-ink-soft)'>页面不存在，或链接已经失效。</p>
         <Button asChild className='mt-6'>
           <Link to='/'>返回首页</Link>
         </Button>

@@ -164,10 +164,10 @@ function ProjectDataPage() {
               {project.status === 'active' ? '采集中' : '已停用'}
             </Badge>
           </div>
-          <h1 className='font-serif text-4xl font-bold tracking-tight text-[var(--sea-ink)]'>
+          <h1 className='font-serif text-4xl font-bold tracking-tight text-(--sea-ink)'>
             {project.name} · 数据明细
           </h1>
-          <p className='mt-2 max-w-2xl text-[var(--sea-ink-soft)]'>
+          <p className='mt-2 max-w-2xl text-(--sea-ink-soft)'>
             查看按天聚合的采集明细。为保护隐私，这里不展示原始事件、访客标识或 User-Agent。
           </p>
         </div>
@@ -185,11 +185,11 @@ function ProjectDataPage() {
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       ) : (
-        <Card className='border-[var(--line)] bg-[var(--surface-strong)]'>
+        <Card className='border-(--line) bg-(--surface-strong)'>
           <CardHeader>
             <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
               <div>
-                <CardTitle className='flex items-center gap-2 text-[var(--sea-ink)]'>
+                <CardTitle className='flex items-center gap-2 text-(--sea-ink)'>
                   <Table2 className='size-5' aria-hidden='true' />
                   聚合明细表
                 </CardTitle>
@@ -203,7 +203,7 @@ function ProjectDataPage() {
             </div>
           </CardHeader>
           <CardContent className='space-y-5'>
-            <div className='grid gap-3 rounded-xl border border-[var(--line)] bg-white/60 p-4 sm:grid-cols-2 lg:grid-cols-4'>
+            <div className='grid gap-3 rounded-xl border border-(--line) bg-white/60 p-4 sm:grid-cols-2 lg:grid-cols-4'>
               <FilterSelect
                 label='日期范围'
                 value={String(days)}
@@ -242,19 +242,19 @@ function ProjectDataPage() {
                 正在加载详细数据…
               </div>
             ) : details.rows.length === 0 ? (
-              <div className='rounded-xl border border-dashed border-[var(--line)] bg-white/40 px-6 py-16 text-center'>
+              <div className='rounded-xl border border-dashed border-(--line) bg-white/40 px-6 py-16 text-center'>
                 <Table2 className='text-muted-foreground mx-auto size-8' aria-hidden='true' />
-                <p className='mt-4 font-medium text-[var(--sea-ink)]'>暂无匹配的聚合数据</p>
+                <p className='mt-4 font-medium text-(--sea-ink)'>暂无匹配的聚合数据</p>
                 <p className='text-muted-foreground mt-1 text-sm'>
                   尝试扩大日期范围或清除筛选条件。
                 </p>
               </div>
             ) : (
               <>
-                <div className='overflow-x-auto rounded-xl border border-[var(--line)]'>
-                  <table className='w-full min-w-[920px] text-left text-sm'>
+                <div className='overflow-x-auto rounded-xl border border-(--line)'>
+                  <table className='w-full min-w-230 text-left text-sm'>
                     <caption className='sr-only'>项目按日期和设备环境聚合的采集明细</caption>
-                    <thead className='bg-white/70 text-xs tracking-wide text-[var(--sea-ink-soft)] uppercase'>
+                    <thead className='bg-white/70 text-xs tracking-wide text-(--sea-ink-soft) uppercase'>
                       <tr>
                         <th scope='col' className='px-4 py-3 font-medium'>
                           UTC 日期
@@ -276,31 +276,29 @@ function ProjectDataPage() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className='divide-y divide-[var(--line)]'>
+                    <tbody className='divide-y divide-(--line)'>
                       {details.rows.map((row) => (
                         <tr
                           key={getRowKey(row)}
                           className='bg-white/35 transition-colors hover:bg-white/75'
                         >
-                          <td className='px-4 py-3 font-medium whitespace-nowrap text-[var(--sea-ink)]'>
+                          <td className='px-4 py-3 font-medium whitespace-nowrap text-(--sea-ink)'>
                             {row.date}
                           </td>
-                          <td className='px-4 py-3 text-[var(--sea-ink-soft)]'>
-                            <span className='font-medium text-[var(--sea-ink)]'>
+                          <td className='px-4 py-3 text-(--sea-ink-soft)'>
+                            <span className='font-medium text-(--sea-ink)'>
                               {row.browserFamily}
                             </span>
                             <span className='text-muted-foreground ml-1'>
                               {row.browserMajor || '未知版本'}
                             </span>
                           </td>
-                          <td className='px-4 py-3 text-[var(--sea-ink-soft)]'>{row.osFamily}</td>
-                          <td className='px-4 py-3 text-[var(--sea-ink-soft)]'>
-                            {row.deviceClass}
-                          </td>
-                          <td className='px-4 py-3 text-[var(--sea-ink-soft)]'>
+                          <td className='px-4 py-3 text-(--sea-ink-soft)'>{row.osFamily}</td>
+                          <td className='px-4 py-3 text-(--sea-ink-soft)'>{row.deviceClass}</td>
+                          <td className='px-4 py-3 text-(--sea-ink-soft)'>
                             {formatDetectionSource(row.detectionSource)}
                           </td>
-                          <td className='px-4 py-3 text-right font-semibold text-[var(--sea-ink)]'>
+                          <td className='px-4 py-3 text-right font-semibold text-(--sea-ink)'>
                             {row.eventCount.toLocaleString('zh-CN')}
                           </td>
                         </tr>
@@ -369,7 +367,7 @@ function FilterSelect({
       >
         <SelectTrigger
           aria-label={label}
-          className='h-9 w-full border-[var(--line)] bg-white/80 text-[var(--sea-ink)]'
+          className='h-9 w-full border-(--line) bg-white/80 text-(--sea-ink)'
         >
           <SelectValue placeholder={emptyLabel ?? '请选择'} />
         </SelectTrigger>
