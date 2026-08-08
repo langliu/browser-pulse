@@ -3,7 +3,6 @@ import {
   Activity,
   ArrowLeft,
   CheckCircle2,
-  CircleOff,
   Code2,
   Gauge,
   Globe2,
@@ -43,6 +42,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { Textarea } from '#/components/ui/textarea'
 import { buildCollectorSnippet } from '#/lib/collector-snippet'
 import {
+  computePolicyImpact,
+  formatPercentNullable,
+  getBelowSupportBreakdown,
+  getProjectHealth,
+  parsePolicyDraftInputs,
+  policiesToDraftMap,
+} from '#/lib/dashboard-insights'
+import {
   addProjectOrigin,
   deleteProject,
   getProjectDashboard,
@@ -52,7 +59,11 @@ import {
   updateProject,
   updateProjectOrigins,
 } from '#/server/dashboard.functions'
-import type { ProjectDashboard, ProjectDetail } from '#/server/dashboard.functions'
+import type {
+  ProjectDashboard,
+  ProjectDetail,
+  SupportPolicyEntry,
+} from '#/server/dashboard.functions'
 
 type OsFamilyFilter = 'Windows' | 'macOS' | 'iOS' | 'Android' | 'Linux' | 'ChromeOS' | 'Other'
 
@@ -100,6 +111,10 @@ function ProjectPage() {
   const [policiesSaved, setPoliciesSaved] = useState(false)
   const [policyError, setPolicyError] = useState<string | null>(null)
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false)
+  const [policyDraftInputs, setPolicyDraftInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(BROWSER_FAMILIES.map((family) => [family, ''])),
+  )
+  const [adoptingSuggestion, setAdoptingSuggestion] = useState<string | null>(null)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [deletingProject, setDeletingProject] = useState(false)
   const [deleteConfirmName, setDeleteConfirmName] = useState('')
@@ -157,42 +172,87 @@ function ProjectPage() {
     }
   }, [project.id, days, interval, osFamilies, deviceClasses])
 
+  function openPolicyDialog() {
+    const next = Object.fromEntries(
+      BROWSER_FAMILIES.map((family) => {
+        const current = dashboard?.policies.find((policy) => policy.browserFamily === family)
+        return [family, current ? String(current.minimumSupportedMajor) : '']
+      }),
+    )
+    setPolicyDraftInputs(next)
+    setPolicyError(null)
+    setPolicyDialogOpen(true)
+  }
+
+  async function refreshDashboard() {
+    const refreshed = await getProjectDashboard({
+      data: {
+        projectId: project.id,
+        days,
+        interval,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        osFamilies,
+        deviceClasses,
+      },
+    })
+    setDashboard(refreshed)
+    return refreshed
+  }
+
+  type PolicyFamily = (typeof BROWSER_FAMILIES)[number]
+  type PolicyPayload = Array<{ browserFamily: PolicyFamily; minimumSupportedMajor: number }>
+
+  async function persistPolicies(policies: PolicyPayload) {
+    await saveSupportPolicies({
+      data: { projectId: project.id, policies },
+    })
+    setPoliciesSaved(true)
+    await refreshDashboard()
+    window.setTimeout(() => setPoliciesSaved(false), 1800)
+  }
+
   async function submitPolicies(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSavingPolicies(true)
     setPolicyError(null)
-    const form = new FormData(event.currentTarget)
-    const policies = BROWSER_FAMILIES.flatMap((family) => {
-      const raw = String(form.get(`policy-${family}`) ?? '').trim()
-      if (!raw) return []
-      const minimumSupportedMajor = Number(raw)
-      if (!Number.isInteger(minimumSupportedMajor) || minimumSupportedMajor < 1) {
-        return []
-      }
+    const draft = parsePolicyDraftInputs(policyDraftInputs)
+    const policies: PolicyPayload = BROWSER_FAMILIES.flatMap((family) => {
+      const minimumSupportedMajor = draft.get(family) ?? null
+      if (minimumSupportedMajor === null) return []
       return [{ browserFamily: family, minimumSupportedMajor }]
     })
     try {
-      await saveSupportPolicies({
-        data: { projectId: project.id, policies },
-      })
-      setPoliciesSaved(true)
-      const refreshed = await getProjectDashboard({
-        data: {
-          projectId: project.id,
-          days,
-          interval,
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          osFamilies,
-          deviceClasses,
-        },
-      })
-      setDashboard(refreshed)
+      await persistPolicies(policies)
       setPolicyDialogOpen(false)
     } catch (caught) {
       setPolicyError(caught instanceof Error ? caught.message : '支持策略保存失败')
     } finally {
       setSavingPolicies(false)
-      window.setTimeout(() => setPoliciesSaved(false), 1800)
+    }
+  }
+
+  async function adoptSuggestedPolicies(entries: SupportPolicyEntry[]) {
+    if (entries.length === 0) return
+    const key = entries.map((entry) => entry.browserFamily).join(',')
+    setAdoptingSuggestion(key)
+    setPolicyError(null)
+    try {
+      const allowed = new Set<string>(BROWSER_FAMILIES)
+      const map = policiesToDraftMap(dashboard?.policies ?? [])
+      for (const entry of entries) {
+        if (!allowed.has(entry.browserFamily)) continue
+        map.set(entry.browserFamily, entry.minimumSupportedMajor)
+      }
+      const policies: PolicyPayload = BROWSER_FAMILIES.flatMap((family) => {
+        const minimumSupportedMajor = map.get(family) ?? null
+        if (minimumSupportedMajor === null) return []
+        return [{ browserFamily: family, minimumSupportedMajor }]
+      })
+      await persistPolicies(policies)
+    } catch (caught) {
+      setPolicyError(caught instanceof Error ? caught.message : '采纳支持线建议失败')
+    } finally {
+      setAdoptingSuggestion(null)
     }
   }
 
@@ -320,10 +380,16 @@ function ProjectPage() {
 
       <div className='flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
         <div className='min-w-0'>
-          <div className='mb-3 flex items-center gap-2'>
-            <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
-              {project.status === 'active' ? '采集中' : '已停用'}
-            </Badge>
+          <div className='mb-3 flex flex-wrap items-center gap-2'>
+            <ProjectHealthBadge
+              status={project.status}
+              lastSuccessfulCollectionAt={project.lastSuccessfulCollectionAt}
+            />
+            {policiesSaved ? (
+              <Badge variant='secondary' className='bg-[#e4f4ea] text-[#2f6a4a]'>
+                支持策略已更新
+              </Badge>
+            ) : null}
           </div>
           <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'>
             <div className='flex min-w-0 flex-wrap items-center gap-3'>
@@ -370,10 +436,7 @@ function ProjectPage() {
                 size='sm'
                 className='h-7 rounded-full px-2.5'
                 disabled={loading && !dashboard}
-                onClick={() => {
-                  setPolicyError(null)
-                  setPolicyDialogOpen(true)
-                }}
+                onClick={openPolicyDialog}
               >
                 <Pencil className='size-3.5' aria-hidden='true' />
                 编辑
@@ -569,14 +632,10 @@ function ProjectPage() {
               为浏览器家族设置整数主版本阈值；未配置的家族不计入策略分母。修改后立即重算，不改写历史事件。可在收到事件前预先配置。
             </DialogDescription>
           </DialogHeader>
-          <form
-            key={policyDialogOpen ? 'open' : 'closed'}
-            onSubmit={submitPolicies}
-            className='space-y-4'
-          >
+          <form onSubmit={submitPolicies} className='space-y-4'>
             <div className='grid gap-3 sm:grid-cols-2'>
               {BROWSER_FAMILIES.map((family) => {
-                const current = dashboard?.policies.find(
+                const suggested = dashboard?.suggestedPolicies.find(
                   (policy) => policy.browserFamily === family,
                 )
                 return (
@@ -584,19 +643,44 @@ function ProjectPage() {
                     key={family}
                     className='flex items-center justify-between gap-3 rounded-xl border border-(--line) bg-white/70 px-4 py-3'
                   >
-                    <Label
-                      htmlFor={`policy-${family}`}
-                      className='text-sm font-medium text-(--sea-ink)'
-                    >
-                      {family}
-                    </Label>
+                    <div className='min-w-0'>
+                      <Label
+                        htmlFor={`policy-${family}`}
+                        className='text-sm font-medium text-(--sea-ink)'
+                      >
+                        {family}
+                      </Label>
+                      {suggested ? (
+                        <p className='text-muted-foreground mt-0.5 text-[11px]'>
+                          建议 ≥{suggested.minimumSupportedMajor}
+                          <button
+                            type='button'
+                            className='ml-1 text-(--palm) underline-offset-2 hover:underline'
+                            onClick={() =>
+                              setPolicyDraftInputs((current) => ({
+                                ...current,
+                                [family]: String(suggested.minimumSupportedMajor),
+                              }))
+                            }
+                          >
+                            填入
+                          </button>
+                        </p>
+                      ) : null}
+                    </div>
                     <Input
                       id={`policy-${family}`}
                       name={`policy-${family}`}
                       type='number'
                       min={1}
                       max={999}
-                      defaultValue={current?.minimumSupportedMajor ?? ''}
+                      value={policyDraftInputs[family] ?? ''}
+                      onChange={(event) =>
+                        setPolicyDraftInputs((current) => ({
+                          ...current,
+                          [family]: event.target.value,
+                        }))
+                      }
                       placeholder='未配置'
                       className='w-24 text-right'
                     />
@@ -604,6 +688,13 @@ function ProjectPage() {
                 )
               })}
             </div>
+            {dashboard && dashboard.totalEvents > 0 ? (
+              <PolicyWhatIfPreview
+                distribution={dashboard.distribution}
+                draftInputs={policyDraftInputs}
+                currentRate={dashboard.belowSupportRate}
+              />
+            ) : null}
             {policyError ? (
               <Alert variant='destructive'>
                 <AlertTitle>保存失败</AlertTitle>
@@ -655,6 +746,10 @@ function ProjectPage() {
             addOriginMessage={addOriginMessage}
             originsError={originsError}
             onAddCurrentOrigin={handleAddCurrentOrigin}
+            adoptingSuggestion={adoptingSuggestion}
+            policyError={policyError}
+            onAdoptSuggested={adoptSuggestedPolicies}
+            onOpenPolicyDialog={openPolicyDialog}
           />
         </TabsContent>
 
@@ -837,6 +932,295 @@ function ProjectPage() {
   )
 }
 
+function countDistributionStatuses(distribution: ProjectDashboard['distribution']) {
+  const counts = {
+    below_support: 0,
+    supported: 0,
+    unconfigured: 0,
+    unknown: 0,
+    belowEvents: 0,
+    supportedEvents: 0,
+    unconfiguredEvents: 0,
+  }
+  for (const item of distribution) {
+    counts[item.status] += 1
+    if (item.status === 'below_support') counts.belowEvents += item.eventCount
+    else if (item.status === 'supported') counts.supportedEvents += item.eventCount
+    else if (item.status === 'unconfigured') counts.unconfiguredEvents += item.eventCount
+  }
+  return counts
+}
+
+function SupportCompatibilityPanel({
+  dashboard,
+  hasPolicies,
+  belowBreakdown,
+  statusCounts,
+  adoptingSuggestion,
+  policyError,
+  onAdoptSuggested,
+  onOpenPolicyDialog,
+}: {
+  dashboard: ProjectDashboard
+  hasPolicies: boolean
+  belowBreakdown: ReturnType<typeof getBelowSupportBreakdown>
+  statusCounts: ReturnType<typeof countDistributionStatuses>
+  adoptingSuggestion: string | null
+  policyError: string | null
+  onAdoptSuggested: (entries: SupportPolicyEntry[]) => void | Promise<void>
+  onOpenPolicyDialog: () => void
+}) {
+  const rate = dashboard.belowSupportRate
+  const rateLabel = formatPercent(rate)
+
+  return (
+    <Card className='border-(--line) bg-(--surface-strong) shadow-none'>
+      <CardHeader className='gap-3'>
+        <div className='space-y-1.5'>
+          <CardTitle className='flex items-center gap-2 text-(--sea-ink)'>
+            <TrendingDown className='size-5 text-(--palm)' aria-hidden='true' />
+            支持线与不兼容样本
+          </CardTitle>
+          <CardDescription className='max-w-2xl leading-6'>
+            相对你配置的最低支持主版本：有多少页面加载样本落在线以下、主要是哪些版本。未配置策略的家族不进入分母。
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className='space-y-5'>
+        {!hasPolicies ? (
+          <div className='rounded-2xl border border-dashed border-(--line) bg-white/55 px-4 py-5'>
+            <p className='text-base font-semibold text-(--sea-ink)'>尚未配置最低支持版本</p>
+            <p className='text-muted-foreground mt-2 max-w-xl text-sm leading-6'>
+              配置后这里会显示低于支持线占比，并列出主要不兼容版本。也可先采纳下方基于真实样本的建议（家族样本较少时可能暂无建议）。
+            </p>
+            <div className='mt-4 flex flex-wrap gap-2'>
+              <Button type='button' size='sm' onClick={onOpenPolicyDialog}>
+                立即配置
+              </Button>
+              <span className='text-muted-foreground self-center text-xs'>
+                当前分布中有 {statusCounts.unconfiguredEvents.toLocaleString('zh-CN')}{' '}
+                条样本尚未纳入任何策略
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className='grid gap-4 lg:grid-cols-[minmax(0,14rem)_1fr]'>
+            <div className='rounded-2xl border border-(--chip-line) bg-(--chip-bg) px-4 py-4'>
+              <p className='text-muted-foreground text-[11px] font-medium tracking-[0.08em] uppercase'>
+                低于支持线
+              </p>
+              <p className='mt-2 font-serif text-4xl font-bold tracking-tight text-(--sea-ink) tabular-nums'>
+                {rateLabel}
+              </p>
+              <p className='text-muted-foreground mt-2 text-xs leading-5'>
+                {rate === null
+                  ? '已配置策略，但当前筛选下没有纳入策略的样本（例如策略家族与流量家族不一致）。'
+                  : `${dashboard.belowSupportEvents.toLocaleString('zh-CN')} / ${dashboard.policyEligibleEvents.toLocaleString('zh-CN')} 策略样本`}
+              </p>
+              <p className='text-muted-foreground mt-3 text-xs leading-5'>
+                策略覆盖 {formatPercent(dashboard.policyCoverageRate)} · 支持{' '}
+                {statusCounts.supportedEvents.toLocaleString('zh-CN')} · 未纳入{' '}
+                {statusCounts.unconfiguredEvents.toLocaleString('zh-CN')}
+              </p>
+            </div>
+
+            <div className='min-w-0 space-y-3'>
+              {rate !== null && rate > 0 && belowBreakdown.length > 0 ? (
+                <>
+                  <div className='flex items-center justify-between gap-2'>
+                    <p className='text-sm font-semibold text-(--sea-ink)'>主要不兼容版本</p>
+                    <p className='text-muted-foreground text-xs'>占「低于支持线」事件的份额</p>
+                  </div>
+                  <div className='space-y-2'>
+                    {belowBreakdown.map((item) => (
+                      <div
+                        key={`${item.browserFamily}-${item.browserMajor ?? 'x'}`}
+                        className='flex items-center justify-between gap-3 rounded-xl border border-(--line) bg-white/70 px-3 py-2.5 text-sm'
+                      >
+                        <div className='min-w-0'>
+                          <p className='font-medium text-(--sea-ink)'>
+                            {item.browserFamily}
+                            {item.browserMajor !== null ? (
+                              <span className='text-muted-foreground'> {item.browserMajor}</span>
+                            ) : null}
+                          </p>
+                          <p className='text-muted-foreground text-xs'>
+                            {item.minimumSupportedMajor !== null
+                              ? `支持线 ≥${item.minimumSupportedMajor}`
+                              : '未配置阈值'}
+                          </p>
+                        </div>
+                        <div className='shrink-0 text-right text-xs'>
+                          <p className='font-semibold text-(--sea-ink) tabular-nums'>
+                            {item.eventCount.toLocaleString('zh-CN')}
+                          </p>
+                          <p className='text-muted-foreground'>
+                            {(item.shareOfBelow * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : rate === 0 ? (
+                <div className='rounded-xl border border-(--line) bg-white/70 px-4 py-5'>
+                  <p className='font-semibold text-(--sea-ink)'>当前筛选下没有低于支持线的样本</p>
+                  <p className='text-muted-foreground mt-1 text-sm leading-6'>
+                    已纳入策略的样本均达到最低主版本。可在版本分布中查看「支持 / 未纳入策略」标签。
+                  </p>
+                </div>
+              ) : rate === null ? (
+                <div className='rounded-xl border border-(--line) bg-white/70 px-4 py-5'>
+                  <p className='font-semibold text-(--sea-ink)'>无法计算低于支持线占比</p>
+                  <p className='text-muted-foreground mt-1 text-sm leading-6'>
+                    分母为「已配置策略且可识别主版本」的样本。请确认策略家族与当前筛选后的流量匹配，或放宽筛选。
+                  </p>
+                  {dashboard.policies.length > 0 ? (
+                    <p className='mt-3 flex flex-wrap gap-1.5 text-xs'>
+                      {dashboard.policies.map((policy) => (
+                        <span
+                          key={policy.browserFamily}
+                          className='rounded-full border border-(--chip-line) bg-(--chip-bg) px-2 py-0.5 text-(--sea-ink)'
+                        >
+                          {policy.browserFamily} ≥{policy.minimumSupportedMajor}
+                        </span>
+                      ))}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className='rounded-xl border border-(--line) bg-white/70 px-4 py-5'>
+                  <p className='text-muted-foreground text-sm'>暂无低于支持线明细可展示。</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {dashboard.suggestedPolicies.length > 0 ? (
+          <div className='rounded-2xl border border-(--chip-line) bg-(--chip-bg)/80 px-4 py-4'>
+            <div className='flex flex-wrap items-center justify-between gap-2'>
+              <p className='text-sm font-semibold text-(--sea-ink)'>
+                支持线建议（约覆盖该家族 95% 样本）
+              </p>
+              <Button
+                type='button'
+                size='sm'
+                variant='ghost'
+                className='h-7'
+                onClick={onOpenPolicyDialog}
+              >
+                预览修改影响
+              </Button>
+            </div>
+            <div className='mt-3 flex flex-wrap gap-2'>
+              {dashboard.suggestedPolicies.map((item) => {
+                const current = dashboard.policies.find(
+                  (policy) => policy.browserFamily === item.browserFamily,
+                )
+                const already = current?.minimumSupportedMajor === item.minimumSupportedMajor
+                const busy = adoptingSuggestion === item.browserFamily
+                return (
+                  <div
+                    key={item.browserFamily}
+                    className='flex items-center gap-1.5 rounded-full border border-(--chip-line) bg-white/85 py-1 pr-1 pl-2.5 text-xs font-medium text-(--sea-ink)'
+                  >
+                    <span>
+                      {item.browserFamily} ≥{item.minimumSupportedMajor}
+                    </span>
+                    <Button
+                      type='button'
+                      size='sm'
+                      variant={already ? 'secondary' : 'outline'}
+                      className='h-6 rounded-full px-2 text-[11px]'
+                      disabled={already || Boolean(adoptingSuggestion)}
+                      onClick={() => void onAdoptSuggested([item])}
+                    >
+                      {already ? '已采纳' : busy ? '…' : '采纳'}
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+            <div className='mt-3 flex flex-wrap items-center gap-2'>
+              <Button
+                type='button'
+                size='sm'
+                className='h-7 rounded-full'
+                disabled={Boolean(adoptingSuggestion)}
+                onClick={() => void onAdoptSuggested(dashboard.suggestedPolicies)}
+              >
+                {adoptingSuggestion && adoptingSuggestion.includes(',')
+                  ? '采纳中…'
+                  : '全部采纳建议'}
+              </Button>
+              <span className='text-muted-foreground text-xs'>
+                单家族可识别样本过少时不会给出建议。
+              </span>
+            </div>
+            {policyError ? <p className='text-destructive mt-2 text-xs'>{policyError}</p> : null}
+          </div>
+        ) : hasPolicies ? null : (
+          <p className='text-muted-foreground text-xs leading-5'>
+            暂无自动建议：需要某浏览器家族在当前筛选下积累足够可识别样本后才会生成。
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ProjectHealthBadge({
+  status,
+  lastSuccessfulCollectionAt,
+}: {
+  status: 'active' | 'disabled'
+  lastSuccessfulCollectionAt: string | null
+}) {
+  const health = getProjectHealth({ status, lastSuccessfulCollectionAt })
+  const variant =
+    health.key === 'healthy'
+      ? 'default'
+      : health.key === 'possibly_stale'
+        ? 'destructive'
+        : 'secondary'
+  return (
+    <Badge variant={variant} title={health.detail}>
+      {health.label}
+    </Badge>
+  )
+}
+
+function PolicyWhatIfPreview({
+  distribution,
+  draftInputs,
+  currentRate,
+}: {
+  distribution: ProjectDashboard['distribution']
+  draftInputs: Record<string, string>
+  currentRate: number | null
+}) {
+  const impact = computePolicyImpact(distribution, parsePolicyDraftInputs(draftInputs))
+  return (
+    <div className='rounded-xl border border-(--chip-line) bg-(--chip-bg) px-4 py-3 text-sm'>
+      <p className='font-medium text-(--sea-ink)'>影响预览（当前筛选下的分布）</p>
+      <p className='text-muted-foreground mt-1 text-xs leading-5'>
+        低于支持线{' '}
+        <span className='font-semibold text-(--sea-ink) tabular-nums'>
+          {formatPercentNullable(impact.belowSupportRate)}
+        </span>
+        {currentRate !== impact.belowSupportRate ? (
+          <span> （当前已保存 {formatPercentNullable(currentRate)}）</span>
+        ) : null}
+        {' · '}
+        {impact.belowSupportEvents.toLocaleString('zh-CN')} /{' '}
+        {impact.policyEligibleEvents.toLocaleString('zh-CN')} 策略样本
+        {impact.policyEligibleEvents === 0 ? ' · 尚未有纳入策略的样本' : ''}
+      </p>
+    </div>
+  )
+}
+
 function MetricCard({
   icon,
   label,
@@ -927,6 +1311,10 @@ interface DashboardOverviewProps {
   addOriginMessage: string | null
   originsError: string | null
   onAddCurrentOrigin: () => void | Promise<void>
+  adoptingSuggestion: string | null
+  policyError: string | null
+  onAdoptSuggested: (entries: SupportPolicyEntry[]) => void | Promise<void>
+  onOpenPolicyDialog: () => void
 }
 
 function DashboardOverview({
@@ -948,6 +1336,10 @@ function DashboardOverview({
   addOriginMessage,
   originsError,
   onAddCurrentOrigin,
+  adoptingSuggestion,
+  policyError,
+  onAdoptSuggested,
+  onOpenPolicyDialog,
 }: DashboardOverviewProps) {
   if (loadError) {
     return (
@@ -982,7 +1374,8 @@ function DashboardOverview({
               接入向导：拿到第一个有效事件
             </CardTitle>
             <CardDescription className='leading-6'>
-              目标是 5 分钟内完成：白名单 Origin → 复制代码或测试页 → 收到 202 → 看板出现样本。
+              步骤：白名单 Origin → 复制代码或测试页 → 收到 202 →
+              看板出现样本。有事件后将在概览顶部展示「支持线与不兼容样本」。
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -1047,7 +1440,7 @@ function DashboardOverview({
                 <p className='font-semibold text-(--sea-ink)'>3. 确认入账</p>
                 <p className='mt-1'>
                   成功应返回 <code>accepted</code> / HTTP
-                  202。聚合通常在数分钟内出现；可到「最近事件」调试页查看是否已落库。
+                  202。队列消费成功后会出现在看板；可到「最近事件」调试页确认是否已落库。
                 </p>
                 <Button asChild size='sm' variant='outline' className='mt-2'>
                   <Link to='/app/projects/$projectId/events' params={{ projectId: project.id }}>
@@ -1068,21 +1461,13 @@ function DashboardOverview({
             )}
           </CardContent>
         </Card>
-        {project.lastRejectedReason && (
-          <Alert className='border-(--line) bg-white/70'>
-            <CircleOff className='size-4' aria-hidden='true' />
-            <AlertTitle>最近一次服务端拒绝</AlertTitle>
-            <AlertDescription>
-              <code>{project.lastRejectedReason}</code>
-              {project.lastRejectedAt &&
-                ` · ${new Date(project.lastRejectedAt).toLocaleString('zh-CN')}`}
-              。常见原因：Origin 未放行、采集键已吊销、速率限制。
-            </AlertDescription>
-          </Alert>
-        )}
       </div>
     )
   }
+
+  const belowBreakdown = getBelowSupportBreakdown(dashboard.distribution, 5)
+  const hasPolicies = dashboard.policies.length > 0
+  const statusCounts = countDistributionStatuses(dashboard.distribution)
 
   return (
     <div className='space-y-4'>
@@ -1097,7 +1482,18 @@ function DashboardOverview({
           refreshing ? 'opacity-60' : 'opacity-100'
         }`}
       >
-        <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-5'>
+        <SupportCompatibilityPanel
+          dashboard={dashboard}
+          hasPolicies={hasPolicies}
+          belowBreakdown={belowBreakdown}
+          statusCounts={statusCounts}
+          adoptingSuggestion={adoptingSuggestion}
+          policyError={policyError}
+          onAdoptSuggested={onAdoptSuggested}
+          onOpenPolicyDialog={onOpenPolicyDialog}
+        />
+
+        <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
           <MetricCard
             icon={<Activity className='size-4' aria-hidden='true' />}
             label='采集事件'
@@ -1114,17 +1510,7 @@ function DashboardOverview({
             icon={<ShieldCheck className='size-4' aria-hidden='true' />}
             label='策略覆盖率'
             value={formatPercent(dashboard.policyCoverageRate)}
-            detail='已配置支持线的样本'
-          />
-          <MetricCard
-            icon={<TrendingDown className='size-4' aria-hidden='true' />}
-            label='低于支持线'
-            value={formatPercent(dashboard.belowSupportRate)}
-            detail={
-              dashboard.belowSupportRate === null
-                ? '无策略样本，尚未计算'
-                : `${dashboard.belowSupportEvents.toLocaleString('zh-CN')} / ${dashboard.policyEligibleEvents.toLocaleString('zh-CN')}`
-            }
+            detail={hasPolicies ? '已配置支持线的样本占总事件' : '配置支持线后才会计算'}
           />
           <MetricCard
             icon={<CheckCircle2 className='size-4' aria-hidden='true' />}
@@ -1151,26 +1537,6 @@ function DashboardOverview({
               ? `（${dashboard.unknownDetectionEvents.toLocaleString('zh-CN')} 样本）`
               : ''}
           </p>
-        ) : null}
-
-        {dashboard.suggestedPolicies.length > 0 ? (
-          <Alert className='border-(--chip-line) bg-(--chip-bg)'>
-            <ShieldCheck className='size-4 text-(--palm)' aria-hidden='true' />
-            <AlertTitle>支持线建议（覆盖约 95% 该家族样本）</AlertTitle>
-            <AlertDescription className='mt-2 flex flex-wrap gap-2'>
-              {dashboard.suggestedPolicies.map((item) => (
-                <span
-                  key={item.browserFamily}
-                  className='rounded-full border border-(--chip-line) bg-white/80 px-2.5 py-1 text-xs font-medium text-(--sea-ink)'
-                >
-                  {item.browserFamily} ≥{item.minimumSupportedMajor}
-                </span>
-              ))}
-              <span className='text-muted-foreground text-xs'>
-                仅供参考；样本过少的家族不会给出建议。可在「编辑支持策略」中采纳。
-              </span>
-            </AlertDescription>
-          </Alert>
         ) : null}
 
         {project.status === 'disabled' ? (
@@ -1262,7 +1628,8 @@ function DashboardOverview({
                 浏览器版本分布
               </CardTitle>
               <CardDescription>
-                按“家族 → 主版本”展开；未知样本单列。筛选同时作用于全部视图。
+                按「家族 → 主版本」展开。每条标注是否低于你的支持线（支持 / 低于支持线 / 未纳入策略
+                / 未知）。筛选同时作用于全部视图。
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1270,13 +1637,21 @@ function DashboardOverview({
                 items={dashboard.distribution.slice(0, 5)}
                 totalEvents={dashboard.totalEvents}
               />
-              {dashboard.distribution.length > 5 && (
-                <p className='text-muted-foreground mt-4 text-xs'>
-                  仅展示占比前 5 的版本组合，共 {dashboard.distribution.length} 个。
-                </p>
-              )}
+              <div className='text-muted-foreground mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs'>
+                <span>
+                  概览仅展示占比前 5；共 {dashboard.distribution.length} 个版本组合。标签：支持 /
+                  低于支持线 / 未纳入策略 / 未知。
+                </span>
+                <Link
+                  to='/app/projects/$projectId/data'
+                  params={{ projectId: project.id }}
+                  className='font-medium text-(--palm) underline-offset-2 hover:underline'
+                >
+                  查看按日明细
+                </Link>
+              </div>
               {dashboard.unknownRate > 0 && (
-                <p className='text-muted-foreground mt-4 rounded-lg border border-(--line) bg-white/60 px-3 py-2 text-xs'>
+                <p className='text-muted-foreground mt-3 rounded-lg border border-(--line) bg-white/60 px-3 py-2 text-xs'>
                   无法识别浏览器家族或主版本的样本占 {formatPercent(dashboard.unknownRate)}（
                   {dashboard.unknownDetectionEvents.toLocaleString('zh-CN')}{' '}
                   事件）。识别来源占比见上方摘要。

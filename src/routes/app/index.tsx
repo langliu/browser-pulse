@@ -27,6 +27,7 @@ import {
 } from '#/components/ui/select'
 import { Separator } from '#/components/ui/separator'
 import { Textarea } from '#/components/ui/textarea'
+import { explainRejectionReason, getProjectHealth } from '#/lib/dashboard-insights'
 import {
   createProject,
   createWorkspace,
@@ -34,6 +35,7 @@ import {
   getDashboardState,
   updateWorkspace,
 } from '#/server/dashboard.functions'
+import type { DashboardProject } from '#/server/dashboard.functions'
 
 const dashboardSearchSchema = z.object({
   workspaceId: z.string().uuid().optional(),
@@ -591,29 +593,7 @@ function Dashboard() {
               {dashboard.projects.map((project, index) => (
                 <div key={project.id}>
                   {index > 0 && <Separator />}
-                  <Link
-                    to='/app/projects/$projectId'
-                    params={{ projectId: project.id }}
-                    className='group flex items-center justify-between rounded-xl px-3 py-4 no-underline transition-colors hover:bg-white/60'
-                  >
-                    <div className='min-w-0'>
-                      <div className='flex items-center gap-2'>
-                        <p className='truncate font-medium text-(--sea-ink)'>{project.name}</p>
-                        <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
-                          {project.status === 'active' ? '采集中' : '已停用'}
-                        </Badge>
-                      </div>
-                      <p className='text-muted-foreground mt-1 text-xs'>
-                        {project.lastSuccessfulCollectionAt
-                          ? `最近采集 ${new Date(project.lastSuccessfulCollectionAt).toLocaleString('zh-CN')}`
-                          : '等待首个有效事件'}
-                      </p>
-                    </div>
-                    <ArrowRight
-                      className='text-muted-foreground size-4 transition-transform group-hover:translate-x-1'
-                      aria-hidden='true'
-                    />
-                  </Link>
+                  <ProjectListRow project={project} />
                 </div>
               ))}
             </div>
@@ -733,6 +713,51 @@ function Dashboard() {
         </DialogContent>
       </Dialog>
     </main>
+  )
+}
+
+function ProjectListRow({ project }: { project: DashboardProject }) {
+  const health = getProjectHealth(project)
+  const rejection = explainRejectionReason(project.lastRejectedReason)
+  const badgeVariant =
+    health.key === 'healthy'
+      ? 'default'
+      : health.key === 'possibly_stale'
+        ? 'destructive'
+        : 'secondary'
+
+  return (
+    <Link
+      to='/app/projects/$projectId'
+      params={{ projectId: project.id }}
+      className='group flex items-center justify-between rounded-xl px-3 py-4 no-underline transition-colors hover:bg-white/60'
+    >
+      <div className='min-w-0'>
+        <div className='flex flex-wrap items-center gap-2'>
+          <p className='truncate font-medium text-(--sea-ink)'>{project.name}</p>
+          <Badge variant={badgeVariant} title={health.detail}>
+            {health.label}
+          </Badge>
+        </div>
+        <p className='text-muted-foreground mt-1 text-xs'>
+          {project.lastSuccessfulCollectionAt
+            ? `最近采集 ${new Date(project.lastSuccessfulCollectionAt).toLocaleString('zh-CN')}`
+            : '等待首个有效事件'}
+          {health.key !== 'disabled' &&
+          rejection &&
+          (!project.lastSuccessfulCollectionAt ||
+            (project.lastRejectedAt &&
+              project.lastSuccessfulCollectionAt &&
+              project.lastRejectedAt > project.lastSuccessfulCollectionAt))
+            ? ` · 最近拒绝：${rejection.title}`
+            : ''}
+        </p>
+      </div>
+      <ArrowRight
+        className='text-muted-foreground size-4 transition-transform group-hover:translate-x-1'
+        aria-hidden='true'
+      />
+    </Link>
   )
 }
 

@@ -24,7 +24,7 @@ const STATUS_STYLE: Record<
   unconfigured: {
     badge: 'bg-[#eef3f5] text-[#5b7176]',
     bar: 'bg-[#9db8bf]',
-    label: '未配置',
+    label: '未纳入策略',
   },
   unknown: {
     badge: 'bg-[#f1f1f1] text-[#7a7a7a]',
@@ -61,6 +61,11 @@ export function DistributionChart({
                   className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium ${style.badge}`}
                 >
                   {style.label}
+                  {item.minimumSupportedMajor !== null &&
+                  item.status !== 'unknown' &&
+                  item.status !== 'unconfigured'
+                    ? ` · ≥${item.minimumSupportedMajor}`
+                    : ''}
                 </span>
               </div>
               <div className='text-muted-foreground shrink-0 text-xs'>

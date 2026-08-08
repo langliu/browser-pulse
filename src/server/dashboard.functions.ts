@@ -119,6 +119,8 @@ export interface DashboardProject {
   name: string
   status: 'active' | 'disabled'
   lastSuccessfulCollectionAt: string | null
+  lastRejectedReason: string | null
+  lastRejectedAt: string | null
   createdAt: string
 }
 
@@ -205,6 +207,8 @@ export const getDashboardState = createServerFn({ method: 'GET' })
         name: projects.name,
         status: projects.status,
         lastSuccessfulCollectionAt: projects.lastSuccessfulCollectionAt,
+        lastRejectedReason: projects.lastRejectedReason,
+        lastRejectedAt: projects.lastRejectedAt,
         createdAt: projects.createdAt,
       })
       .from(projects)
@@ -218,6 +222,7 @@ export const getDashboardState = createServerFn({ method: 'GET' })
         ...project,
         createdAt: project.createdAt.toISOString(),
         lastSuccessfulCollectionAt: project.lastSuccessfulCollectionAt?.toISOString() ?? null,
+        lastRejectedAt: project.lastRejectedAt?.toISOString() ?? null,
       })),
     }
   })

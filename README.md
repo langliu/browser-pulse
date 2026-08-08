@@ -54,7 +54,7 @@ pnpm dev
 # http://localhost:3000
 ```
 
-登录（或使用真实 Google 账号）后：创建工作区 → 创建项目并填写允许的 Origin（如 `http://localhost:3000`）→ 打开项目详情并从“接入代码”标签复制内联片段 → 在页面中调用 `collectBrowserPulse()`，5 分钟内事件可见于项目看板。
+登录（或使用真实 Google 账号）后：创建工作区 → 创建项目并填写允许的 Origin（如 `http://localhost:3000`）→ 打开项目详情并从“接入代码”标签复制内联片段 → 在页面中调用 `collectBrowserPulse()`，队列消费成功后事件可见于项目看板。
 
 ## 常用脚本
 

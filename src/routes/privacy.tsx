@@ -80,8 +80,8 @@ function PrivacyPage() {
           <CardHeader>
             <CardTitle className='text-(--sea-ink)'>数据驻留边界</CardTitle>
             <CardDescription className='leading-6'>
-              当前 MVP 运行在 Cloudflare
-              全球网络。公开材料中的区域提示不等于中国大陆数据驻留承诺；若业务要求严格境内存储，需另立部署架构并完成合规评估。
+              服务运行在 Cloudflare
+              全球网络。公开材料中的区域或位置提示不构成特定司法辖区的数据驻留承诺；若业务有明确的数据本地化要求，需另立部署架构并完成合规评估。
             </CardDescription>
           </CardHeader>
         </Card>
